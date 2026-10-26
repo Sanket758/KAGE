@@ -1,3 +1,7 @@
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { normalizeOpencodeEvent, type KAGEEvent } from "@kage/core";
 import { BridgeClient, type BridgeClientOptions } from "./client.js";
 
@@ -42,6 +46,17 @@ export interface KagePluginOptions {
 
 const FILE_EDIT_THROTTLE_MS = 250;
 
+/** Deployed release AppImage; the same path the autostart entry uses. */
+function companionAppPath(): string {
+  return join(homedir(), ".local", "bin", "KAGE.AppImage");
+}
+
+function spawnCompanion(): void {
+  const app = companionAppPath();
+  if (!existsSync(app)) return;
+  spawn(app, [], { detached: true, stdio: "ignore", env: process.env }).unref();
+}
+
 /**
  * KAGE plugin: observes OpenCode and mirrors activity to the local companion.
  *
@@ -54,6 +69,7 @@ export function createKagePlugin(pluginOptions: KagePluginOptions = {}): Opencod
     id: "kage",
     async setup(context) {
       const client = new BridgeClient({
+        spawnCompanion,
         ...pluginOptions.bridge,
         directory: pluginOptions.bridge?.directory ?? context.location?.directory,
         logger: pluginOptions.bridge?.logger ?? pluginOptions.logger,

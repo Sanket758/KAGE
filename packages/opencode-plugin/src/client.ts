@@ -19,9 +19,13 @@ export interface BridgeClientOptions {
   backoff?: Partial<BackoffOptions>;
   tokenReader?: (path: string) => string | null;
   logger?: (message: string) => void;
+  /** Called when the companion app appears to be absent (no token/socket). */
+  spawnCompanion?: () => void;
 }
 
 const DEFAULT_BACKOFF: BackoffOptions = { baseMs: 500, maxMs: 10_000, jitter: 0.2 };
+const SPAWN_COOLDOWN_MS = 30_000;
+const MAX_SPAWN_ATTEMPTS = 5;
 
 /**
  * Fire-and-forget NDJSON client for the KAGE desktop companion.
@@ -40,6 +44,9 @@ export class BridgeClient {
   #connectTimeoutMs: number;
   #backoff: BackoffOptions;
   #tokenReader: (path: string) => string | null;
+  #spawnCompanion?: () => void;
+  #lastSpawnAt = 0;
+  #spawnAttempts = 0;
 
   #socket: net.Socket | null = null;
   #queue: KAGEEvent[] = [];
@@ -57,6 +64,7 @@ export class BridgeClient {
     this.#connectTimeoutMs = options.connectTimeoutMs ?? 1000;
     this.#backoff = { ...DEFAULT_BACKOFF, ...options.backoff };
     this.#logger = options.logger ?? (() => {});
+    this.#spawnCompanion = options.spawnCompanion;
     this.#tokenReader = options.tokenReader ?? readToken;
   }
 
@@ -115,6 +123,7 @@ export class BridgeClient {
     const token = this.#tokenReader(this.paths.tokenPath);
     if (!token) {
       this.#logger("bridge token not available; is the KAGE desktop app running?");
+      this.#companionMissing();
       this.#scheduleNext();
       return;
     }
@@ -132,6 +141,7 @@ export class BridgeClient {
       clearTimeout(timeout);
       this.#connected = true;
       this.#attempts = 0;
+      this.#spawnAttempts = 0;
       const hello = JSON.stringify({
         type: "hello",
         version: PROTOCOL_VERSION,
@@ -151,8 +161,9 @@ export class BridgeClient {
       }
     });
 
-    socket.on("error", () => {
+    socket.on("error", (error) => {
       // Close always follows; reconnect is handled there.
+      if ((error as NodeJS.ErrnoException)?.code === "ENOENT") this.#companionMissing();
     });
 
     socket.on("close", () => {
@@ -163,6 +174,27 @@ export class BridgeClient {
       if (wasConnected) this.#logger("bridge connection closed");
       this.#scheduleNext();
     });
+  }
+
+  /**
+   * The desktop app is absent (no token file or no socket): give it one
+   * chance to launch, cooldown- and attempt-bounded so a broken install
+   * cannot turn into a spawn loop.
+   */
+  #companionMissing(): void {
+    if (!this.#spawnCompanion) return;
+    if (this.#spawnAttempts >= MAX_SPAWN_ATTEMPTS) return;
+    if (Date.now() - this.#lastSpawnAt < SPAWN_COOLDOWN_MS) return;
+    this.#lastSpawnAt = Date.now();
+    this.#spawnAttempts += 1;
+    this.#logger("KAGE companion not running; trying to launch it");
+    try {
+      this.#spawnCompanion();
+    } catch (error) {
+      this.#logger(
+        `launching the companion failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   #flush(): void {

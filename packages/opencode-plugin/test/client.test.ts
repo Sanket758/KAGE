@@ -366,3 +366,42 @@ describe("KAGE plugin", () => {
     }
   });
 });
+
+describe("BridgeClient companion spawn", () => {
+  it("launches the companion when the socket is missing, cooldown-bounded", async () => {
+    const paths = makePaths();
+    let spawned = 0;
+    const client = new BridgeClient({
+      paths,
+      spawnCompanion: () => {
+        spawned += 1;
+      },
+      backoff: { baseMs: 5, maxMs: 20 },
+      logger: () => {},
+    });
+    live.push(client);
+    client.start();
+    await waitFor(() => spawned > 0);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(spawned).toBe(1);
+  });
+
+  it("does not spawn when the companion is reachable", async () => {
+    const paths = makePaths();
+    const server = await startServer(paths);
+    harnesses.push(server);
+    let spawned = 0;
+    const client = new BridgeClient({
+      paths,
+      spawnCompanion: () => {
+        spawned += 1;
+      },
+      logger: () => {},
+    });
+    live.push(client);
+    client.start();
+    await waitFor(() => client.status === "connected");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(spawned).toBe(0);
+  });
+});

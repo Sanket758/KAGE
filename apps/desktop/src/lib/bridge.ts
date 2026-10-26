@@ -59,6 +59,13 @@ export async function subscribeStatus(
   return listen<string>("kage://status", (event) => handler(toConnectionState(event.payload)));
 }
 
+export async function subscribeMoveMode(
+  handler: (enabled: boolean) => void,
+): Promise<UnlistenFn> {
+  if (!isTauri()) return () => {};
+  return listen<boolean>("kage://move-mode", (event) => handler(event.payload === true));
+}
+
 export function toConnectionState(value: unknown): ConnectionState {
   if (value === "connected" || value === "disconnected") return value;
   return "connecting";

@@ -9,7 +9,12 @@ pub fn desktop_entry_path() -> PathBuf {
 }
 
 pub fn set_autostart(enabled: bool) -> Result<(), String> {
-    let executable = env::current_exe().map_err(|error| error.to_string())?;
+    // Inside an AppImage, current_exe() resolves into the transient squashfs
+    // mount; APPIMAGE is the stable path of the running image.
+    let executable: PathBuf = match env::var_os("APPIMAGE") {
+        Some(path) if !path.is_empty() => PathBuf::from(path),
+        _ => env::current_exe().map_err(|error| error.to_string())?,
+    };
     set_autostart_at(&desktop_entry_path(), enabled, &executable)
 }
 

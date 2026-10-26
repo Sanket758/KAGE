@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import {
     applyEvent,
     createInitialState,
@@ -11,10 +13,17 @@
     type KAGEState,
   } from "@kage/core";
   import SpriteCreature from "./lib/SpriteCreature.svelte";
-  import { getBridgeStatus, loadSettings, subscribeEvents, subscribeStatus } from "./lib/bridge";
+  import {
+    getBridgeStatus,
+    loadSettings,
+    subscribeEvents,
+    subscribeMoveMode,
+    subscribeStatus,
+  } from "./lib/bridge";
 
   let runtime = $state<KAGEState>(createInitialState());
   let settings = $state<KAGESettings>({ ...DEFAULT_SETTINGS });
+  let moveMode = $state(false);
 
   const intensity = $derived(
     settings.animationIntensity === "low"
@@ -23,6 +32,16 @@
         ? 1.4
         : 1,
   );
+
+  function startDrag(event: MouseEvent): void {
+    if (!moveMode || event.button !== 0) return;
+    void getCurrentWindow().startDragging();
+  }
+
+  async function onKeydown(event: KeyboardEvent): Promise<void> {
+    if (!moveMode || event.key !== "Escape") return;
+    moveMode = (await invoke<boolean>("set_move_mode", { enabled: false })) === true;
+  }
 
   onMount(() => {
     let disposed = false;
@@ -61,6 +80,15 @@
         return;
       }
       cleanups.push(statuses);
+
+      const moveModes = await subscribeMoveMode((enabled) => {
+        moveMode = enabled;
+      });
+      if (disposed) {
+        moveModes();
+        return;
+      }
+      cleanups.push(moveModes);
     };
     void init();
 
@@ -71,7 +99,15 @@
   });
 </script>
 
-<main class="app" data-character={runtime.character} aria-hidden="true">
+<svelte:window onkeydown={onKeydown} />
+
+<main
+  class="app"
+  class:move-mode={moveMode}
+  data-character={runtime.character}
+  aria-hidden="true"
+  onmousedown={startDrag}
+>
   <SpriteCreature
     character={runtime.character}
     scale={settings.scale}
@@ -79,4 +115,7 @@
     reducedMotion={settings.reducedMotion}
     {intensity}
   />
+  {#if moveMode}
+    <div class="move-hint" aria-hidden="true">drag me · Esc pins</div>
+  {/if}
 </main>
