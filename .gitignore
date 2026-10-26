@@ -10,3 +10,6 @@ apps/desktop/src-tauri/gen/
 
 # local scratch
 .tmp/
+# tool artifacts
+.playwright-mcp/
+.pytest_cache/
