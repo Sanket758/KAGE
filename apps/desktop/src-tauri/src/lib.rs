@@ -80,6 +80,43 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// Strip everything the GTK stack paints around/behind the webview: the
+/// theme's opaque window background and the decorated "card" frame (rounded
+/// corners + border) that shows up as a box around the sprite.
+#[cfg(target_os = "linux")]
+fn apply_gtk_transparency(window: &tauri::WebviewWindow) {
+    use gtk::prelude::*;
+
+    let Ok(gtk_window) = window.gtk_window() else {
+        return;
+    };
+    gtk_window.set_decorated(false);
+    gtk_window.set_app_paintable(true);
+    if let Some(screen) = gtk::prelude::WidgetExt::screen(&gtk_window) {
+        if let Some(visual) = screen.rgba_visual() {
+            gtk_window.set_visual(Some(&visual));
+        }
+        let provider = gtk::CssProvider::new();
+        let _ = provider.load_from_data(
+            b"window { background: transparent; }\n
+              decoration, .decoration, .background {
+                  border: none;
+                  box-shadow: none;
+                  border-radius: 0;
+                  background: transparent;
+              }",
+        );
+        gtk::StyleContext::add_provider_for_screen(
+            &screen,
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn apply_gtk_transparency(_window: &tauri::WebviewWindow) {}
+
 fn position_is_visible(window: &tauri::WebviewWindow, x: i32, y: i32) -> bool {
     match window.available_monitors() {
         Ok(monitors) if !monitors.is_empty() => monitors.iter().any(|monitor| {
@@ -192,11 +229,17 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 // The mascot is a passive overlay: no focus, no pointer input,
                 // and a truly transparent window/webview background.
-                let _ = window.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
-                // Config sets shadow:false too; reassert at runtime so no
-                // compositor/CDS shadow rectangle shows around the sprite.
+                //
+                // Tauri's own transparent flag is not enough on this stack:
+                // the GTK window still gets the theme's opaque background and
+                // the theme/compositor draws a framed "card" (rounded corners,
+                // 1px border) around it. Configure the GTK window directly:
+                // RGBA visual + app-paintable so the GdkWindow itself is
+                // see-through, and a CSS provider that strips the decoration
+                // node the COSMIC GTK theme styles.
                 let _ = window.set_shadow(false);
                 let _ = window.set_focusable(false);
+                apply_gtk_transparency(&window);
                 let _ = window.show();
                 // The GdkWindow only exists once the window is realized by
                 // show(); tao unwraps it when applying the input shape, so
