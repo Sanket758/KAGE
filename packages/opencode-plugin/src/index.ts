@@ -1,8 +1,6 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { normalizeOpencodeEvent, type KAGEEvent } from "@kage/core";
+import { resolveCompanionCommand } from "./companion.js";
 import { BridgeClient, type BridgeClientOptions } from "./client.js";
 
 /**
@@ -46,15 +44,10 @@ export interface KagePluginOptions {
 
 const FILE_EDIT_THROTTLE_MS = 250;
 
-/** Deployed release AppImage; the same path the autostart entry uses. */
-function companionAppPath(): string {
-  return join(homedir(), ".local", "bin", "KAGE.AppImage");
-}
-
 function spawnCompanion(): void {
-  const app = companionAppPath();
-  if (!existsSync(app)) return;
-  spawn(app, [], { detached: true, stdio: "ignore", env: process.env }).unref();
+  const command = resolveCompanionCommand();
+  if (!command) return;
+  spawn(command, [], { detached: true, stdio: "ignore", env: process.env }).unref();
 }
 
 /**
