@@ -34,6 +34,17 @@ finishing — with its own animation language instead of another dashboard.
 - To build: Node.js 20+, Rust 1.77+, and the Tauri 2 Linux dependencies
   (WebKitGTK 4.1, GTK 3).
 
+## Install (end users)
+
+No toolchain needed — grab a release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Sanket758/KAGE/main/scripts/install.sh | bash
+```
+
+Details, the .deb route, and troubleshooting live in [INSTALL.md](INSTALL.md).
+The rest of this README is for building from source.
+
 ## Run the companion
 
 ```bash

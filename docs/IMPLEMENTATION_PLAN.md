@@ -74,7 +74,7 @@ Environment notes:
 
 - [x] TypeScript, Svelte and Rust checks.
 - [x] Unit and integration suites.
-- [x] Packaging artifact build: `KAGE_0.1.0_amd64.deb` (deb only; no AppImage).
+- [x] Packaging artifact build: `KAGE_0.1.0_amd64.deb` (deb and AppImage; release CI attaches both to GitHub Releases).
 
 ## Stage 9 — Documentation
 

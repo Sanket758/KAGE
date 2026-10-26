@@ -59,7 +59,7 @@ rendering or the Rust IPC layer; those have separate checks below.
   briefly and was removed.
 - **The bundled `.deb` was not installed system-wide during this work.** It was
   built and its control metadata inspected, not `dpkg -i`-ed.
-- **AppImage.** Not produced.
+- **AppImage.** Produced by `tauri build` alongside the deb since the v0.2.0 packaging work; release CI attaches it to GitHub Releases.
 
 ## Manual scenarios
 
