@@ -15,6 +15,7 @@
   import SpriteCreature from "./lib/SpriteCreature.svelte";
   import {
     getBridgeStatus,
+    isTauri,
     loadSettings,
     subscribeEvents,
     subscribeMoveMode,
@@ -24,6 +25,8 @@
   let runtime = $state<KAGEState>(createInitialState());
   let settings = $state<KAGESettings>({ ...DEFAULT_SETTINGS });
   let moveMode = $state(false);
+  let menuOpen = $state(false);
+  let skinList = $state<Array<{ id: string; name: string }>>([]);
 
   const intensity = $derived(
     settings.animationIntensity === "low"
@@ -34,13 +37,66 @@
   );
 
   function startDrag(event: MouseEvent): void {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || menuOpen) return;
     void getCurrentWindow().startDragging();
   }
 
+  async function onContextMenu(event: MouseEvent): Promise<void> {
+    event.preventDefault();
+    if (menuOpen) {
+      menuOpen = false;
+      return;
+    }
+    skinList = await loadSkinList();
+    menuOpen = true;
+  }
+
+  async function loadSkinList(): Promise<Array<{ id: string; name: string }>> {
+    try {
+      const response = await fetch("skins/skins.json");
+      if (!response.ok) throw new Error(String(response.status));
+      const data = (await response.json()) as { skins?: unknown };
+      if (!Array.isArray(data.skins)) throw new Error("no skins array");
+      return data.skins
+        .filter(
+          (item): item is { id: string; name: string } =>
+            typeof item === "object" &&
+            item !== null &&
+            typeof (item as { id?: unknown }).id === "string" &&
+            /^[a-z0-9][a-z0-9-]{0,31}$/.test((item as { id: string }).id),
+        )
+        .map((item) => ({ id: item.id, name: String(item.name ?? item.id) }));
+    } catch {
+      return [];
+    }
+  }
+
+  async function pickSkin(id: string): Promise<void> {
+    menuOpen = false;
+    settings = { ...settings, skin: id };
+    if (!isTauri()) return;
+    try {
+      await invoke("save_settings", { settings });
+    } catch {
+      // Settings persistence is best-effort; the skin still hot-swaps.
+    }
+  }
+
+  async function quit(): Promise<void> {
+    menuOpen = false;
+    if (!isTauri()) return;
+    try {
+      await invoke("quit_app");
+    } catch {
+      // ignore
+    }
+  }
+
   async function onKeydown(event: KeyboardEvent): Promise<void> {
-    if (!moveMode || event.key !== "Escape") return;
-    moveMode = (await invoke<boolean>("set_move_mode", { enabled: false })) === true;
+    if (event.key === "Escape" && (moveMode || menuOpen)) {
+      menuOpen = false;
+      moveMode = (await invoke<boolean>("set_move_mode", { enabled: false })) === true;
+    }
   }
 
   onMount(() => {
@@ -107,15 +163,34 @@
   data-character={runtime.character}
   aria-hidden="true"
   onmousedown={startDrag}
+  oncontextmenu={onContextMenu}
 >
   <SpriteCreature
     character={runtime.character}
+    skin={settings.skin}
     scale={settings.scale}
     opacity={settings.opacity}
     reducedMotion={settings.reducedMotion}
     {intensity}
   />
-  {#if moveMode}
+  {#if menuOpen}
+    <div class="menu" role="menu" aria-label="KAGE menu">
+      {#if skinList.length > 0}
+        <div class="menu-heading">skin</div>
+        {#each skinList as entry (entry.id)}
+          <button
+            type="button"
+            class="menu-item"
+            class:active={entry.id === settings.skin}
+            onclick={() => pickSkin(entry.id)}
+          >
+            {entry.name}{entry.id === settings.skin ? " ✓" : ""}
+          </button>
+        {/each}
+      {/if}
+      <button type="button" class="menu-item quit" onclick={quit}>Quit</button>
+    </div>
+  {:else if moveMode}
     <div class="move-hint" aria-hidden="true">drag me · Esc pins</div>
   {/if}
 </main>

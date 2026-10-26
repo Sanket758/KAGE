@@ -140,7 +140,7 @@ fn sprite_input_shape(window: &tauri::WebviewWindow) {
         .get("scale")
         .and_then(serde_json::Value::as_f64)
         .unwrap_or(1.0)
-        .clamp(0.5, 3.0);
+        .clamp(0.75, 2.0);
     let side = ((width.min(height) as f64) * 0.94 * scale).round() as i32;
     let side = side.min(width).min(height);
     let rect = cairo::RectangleInt::new((width - side) / 2, (height - side) / 2, side, side);

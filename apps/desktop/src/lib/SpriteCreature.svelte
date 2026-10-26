@@ -3,20 +3,24 @@
   import type { CharacterState } from "@kage/core";
 
   /**
-   * Sprite-skin renderer: draws the production KAGEKIN frame sheets
-   * (public/mascot) extracted from the authored sprite sheet, instead of the
-   * procedural pixel creature. Same contract as Creature.svelte.
+   * Sprite-skin renderer. Skins live at `skins/<id>/` with a manifest
+   * (`kagekin-sprite-skin/1`) describing per-state frame counts, durations,
+   * loop behavior, and the runtime-character -> sprite-state map. The tables
+   * below are compile-time defaults so the mascot renders immediately and
+   * survives a missing/corrupt skin; hydration from the manifest replaces
+   * them once fetched.
    */
 
   interface Props {
     character: CharacterState;
+    skin: string;
     scale: number;
     opacity: number;
     reducedMotion: boolean;
     intensity: number;
   }
 
-  let { character, scale, opacity, reducedMotion, intensity }: Props = $props();
+  let { character, skin, scale, opacity, reducedMotion, intensity }: Props = $props();
 
   const CSS_WIDTH = 192;
   const CSS_HEIGHT = 176;
@@ -27,9 +31,13 @@
     loop: boolean;
     holdLast: boolean;
   }
-  type SpriteState = keyof typeof STATE_CONFIG;
+  interface SkinManifest {
+    frameSize: number;
+    states: Record<string, SpriteStateConfig>;
+    characterMap: Record<string, string>;
+  }
 
-  const STATE_CONFIG = {
+  const DEFAULT_STATES = {
     sleeping: { frames: 8, durationMs: 260, loop: true, holdLast: false },
     searching: { frames: 8, durationMs: 160, loop: true, holdLast: false },
     debugging: { frames: 8, durationMs: 180, loop: true, holdLast: false },
@@ -38,8 +46,8 @@
     error: { frames: 8, durationMs: 300, loop: true, holdLast: false },
   } satisfies Record<string, SpriteStateConfig>;
 
-  /** CharacterState -> sprite skin state. Kept in sync with mascot/manifest.json. */
-  const CHARACTER_TO_SPRITE: Record<CharacterState, SpriteState> = {
+  /** CharacterState -> sprite state. Kept in sync with the kagekin manifest. */
+  const DEFAULT_MAP: Record<string, string> = {
     sleeping: "sleeping",
     idle: "reading",
     waking: "reading",
@@ -52,13 +60,112 @@
     disconnected: "sleeping",
   };
 
-  const loadedBitmaps = new Map<string, Promise<ImageBitmap | null>>();
-  let missing = false;
+  let states = $state<Record<string, SpriteStateConfig>>(DEFAULT_STATES);
+  let characterMap = $state<Record<string, string>>(DEFAULT_MAP);
+  // The legacy `mascot/` path keeps working until hydration succeeds.
+  let assetBase = $state("mascot");
+  let missing = $state(false);
 
-  function bitmap(state: SpriteState, index: number, pose: boolean): Promise<ImageBitmap | null> {
+  const manifestCache = new Map<string, SkinManifest | null>();
+  let hydration = 0;
+
+  function normalizeManifest(raw: unknown): SkinManifest | null {
+    if (typeof raw !== "object" || raw === null) return null;
+    const manifest = raw as Record<string, unknown>;
+    if (typeof manifest.states !== "object" || manifest.states === null) return null;
+    const parsedStates: Record<string, SpriteStateConfig> = {};
+    for (const [name, value] of Object.entries(manifest.states as Record<string, unknown>)) {
+      if (typeof value !== "object" || value === null) return null;
+      const entry = value as Record<string, unknown>;
+      const frames = entry.frames;
+      const durationMs = entry.durationMs;
+      if (typeof frames !== "number" || frames < 1 || frames > 64) return null;
+      if (typeof durationMs !== "number" || durationMs < 30 || durationMs > 5000) return null;
+      parsedStates[name] = {
+        frames: Math.round(frames),
+        durationMs: Math.round(durationMs),
+        loop: entry.loop !== false,
+        holdLast: entry.holdLast === true,
+      };
+    }
+    if (Object.keys(parsedStates).length === 0) return null;
+    const characterMap: Record<string, string> = {};
+    if (typeof manifest.characterMap === "object" && manifest.characterMap !== null) {
+      for (const [from, to] of Object.entries(manifest.characterMap as Record<string, unknown>)) {
+        if (typeof to === "string" && parsedStates[to] !== undefined) characterMap[from] = to;
+      }
+    }
+    return {
+      frameSize: typeof manifest.frameSize === "number" ? manifest.frameSize : 160,
+      states: parsedStates,
+      characterMap,
+    };
+  }
+
+  async function fetchManifest(path: string): Promise<SkinManifest | null> {
+    if (manifestCache.has(path)) return manifestCache.get(path) ?? null;
+    let result: SkinManifest | null = null;
+    try {
+      const response = await fetch(path);
+      if (response.ok) result = normalizeManifest(await response.json());
+    } catch {
+      result = null;
+    }
+    manifestCache.set(path, result);
+    return result;
+  }
+
+  /**
+   * Hydrate the requested skin; fall back to the default skin, then the
+   * legacy `mascot/` layout, then the compile-time defaults. The sequence
+   * token discards stale responses when the skin changes mid-flight.
+   */
+  async function hydrate(requested: string): Promise<void> {
+    const token = ++hydration;
+    const candidates: Array<{ id: string; path: string }> = [
+      { id: requested, path: `skins/${requested}/manifest.json` },
+    ];
+    if (requested !== "kagekin") {
+      candidates.push({ id: "kagekin", path: "skins/kagekin/manifest.json" });
+    }
+    candidates.push({ id: "legacy", path: "mascot/manifest.json" });
+
+    let resolved: SkinManifest | null = null;
+    let resolvedId = "legacy";
+    for (const candidate of candidates) {
+      const manifest = await fetchManifest(candidate.path);
+      if (token !== hydration) return;
+      if (manifest) {
+        resolved = manifest;
+        resolvedId = candidate.id;
+        break;
+      }
+    }
+
+    missing = false;
+    if (resolved) {
+      states = resolved.states;
+      characterMap = Object.keys(resolved.characterMap).length
+        ? resolved.characterMap
+        : DEFAULT_MAP;
+      assetBase = resolvedId === "legacy" ? "mascot" : `skins/${resolvedId}`;
+    } else {
+      states = DEFAULT_STATES;
+      characterMap = DEFAULT_MAP;
+      assetBase = "mascot";
+      missing = true;
+    }
+    previous = null;
+    lastDrawn = null;
+    draw(true);
+  }
+
+  const loadedBitmaps = new Map<string, Promise<ImageBitmap | null>>();
+
+  function bitmap(state: string, index: number, pose: boolean): Promise<ImageBitmap | null> {
     const path = pose
-      ? `mascot/${state}/pose.png`
-      : `mascot/${state}/frames/frame_${String(index).padStart(3, "0")}.png`;
+      ? `${assetBase}/${state}/pose.png`
+      : `${assetBase}/${state}/frames/frame_${String(index).padStart(3, "0")}.png`;
     let entry = loadedBitmaps.get(path);
     if (!entry) {
       entry = fetch(path)
@@ -86,8 +193,8 @@
     if (!canvas) return;
     const context = canvas.getContext("2d");
     if (!context) return;
-    const sprite = CHARACTER_TO_SPRITE[character] ?? "sleeping";
-    const config = STATE_CONFIG[sprite];
+    const sprite = characterMap[character] ?? Object.keys(states)[0] ?? "sleeping";
+    const config = states[sprite] ?? Object.values(states)[0] ?? DEFAULT_STATES.sleeping;
     const elapsed = Date.now() - since;
     const still = reducedMotion || missing;
     const index = still
@@ -177,8 +284,8 @@
       since = Date.now();
       lastDrawn = null;
     }
-    const sprite = CHARACTER_TO_SPRITE[activeState] ?? "sleeping";
-    const frameMs = STATE_CONFIG[sprite].durationMs;
+    const sprite = characterMap[activeState] ?? Object.keys(states)[0] ?? "sleeping";
+    const frameMs = (states[sprite] ?? DEFAULT_STATES.sleeping).durationMs;
     interval = reduce
       ? Math.max(500, frameMs * 2)
       : Math.max(60, Math.round(frameMs / Math.max(0.5, speed)));
@@ -189,6 +296,10 @@
       stop();
       start();
     }
+  });
+
+  $effect(() => {
+    void hydrate(skin);
   });
 </script>
 

@@ -12,6 +12,8 @@ export interface KAGESettings {
   /** Character opacity (0.35 - 1). */
   opacity: number;
   animationIntensity: AnimationIntensity;
+  /** Sprite skin id, resolved against the app's skins index at runtime. */
+  skin: string;
   reducedMotion: boolean;
   sound: boolean;
   launchAtLogin: boolean;
@@ -23,12 +25,16 @@ export const DEFAULT_SETTINGS: KAGESettings = {
   scale: 1,
   opacity: 1,
   animationIntensity: "normal",
+  skin: "kagekin",
   reducedMotion: false,
   sound: false,
   launchAtLogin: false,
   showStatusDetails: true,
   position: null,
 };
+
+export const DEFAULT_SKIN = "kagekin";
+const SKIN_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
 const MIN_SCALE = 0.75;
 const MAX_SCALE = 2;
@@ -81,6 +87,16 @@ export function validateSettings(raw: unknown): {
     settings.animationIntensity = raw.animationIntensity as AnimationIntensity;
   } else if (raw.animationIntensity !== undefined) {
     issues.push("invalid animation intensity");
+  }
+
+  if (typeof raw.skin === "string") {
+    if (SKIN_ID_PATTERN.test(raw.skin)) {
+      settings.skin = raw.skin;
+    } else {
+      issues.push("invalid skin id");
+    }
+  } else if (raw.skin !== undefined) {
+    issues.push("invalid skin id");
   }
 
   for (const key of ["reducedMotion", "sound", "launchAtLogin", "showStatusDetails"] as const) {
