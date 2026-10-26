@@ -1,0 +1,80 @@
+{
+  "state": "sleeping",
+  "canvas": {
+    "width": 160,
+    "height": 160
+  },
+  "frame_count": 8,
+  "frame_order": [
+    "frames/frame_000.png",
+    "frames/frame_001.png",
+    "frames/frame_002.png",
+    "frames/frame_003.png",
+    "frames/frame_004.png",
+    "frames/frame_005.png",
+    "frames/frame_006.png",
+    "frames/frame_007.png"
+  ],
+  "frame_duration_ms": 260,
+  "loop": true,
+  "reduced_motion": {
+    "static_image": "pose.png"
+  },
+  "synthetic_frames": [],
+  "source": {
+    "file": "kagekin_all_states_sprite_sheet.png",
+    "panel_x_offset": 0,
+    "panel_width": 294,
+    "grid_cells": [
+      {
+        "x0": 12,
+        "x1": 78,
+        "y0": 336,
+        "y_cut": 407
+      },
+      {
+        "x0": 82,
+        "x1": 145,
+        "y0": 336,
+        "y_cut": 407
+      },
+      {
+        "x0": 149,
+        "x1": 212,
+        "y0": 336,
+        "y_cut": 407
+      },
+      {
+        "x0": 216,
+        "x1": 282,
+        "y0": 336,
+        "y_cut": 407
+      },
+      {
+        "x0": 12,
+        "x1": 78,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 82,
+        "x1": 145,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 149,
+        "x1": 212,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 216,
+        "x1": 282,
+        "y0": 427,
+        "y_cut": 499
+      }
+    ]
+  },
+  "notes": "slow calm idle loop"
+}

@@ -93,12 +93,27 @@ describe("settings validation", () => {
       scale: 1.5,
       opacity: 0.8,
       animationIntensity: "low",
+      skin: "kagekin",
       reducedMotion: true,
       sound: true,
       launchAtLogin: true,
       showStatusDetails: false,
       position: { x: 120, y: -30 },
     });
+  });
+
+  it("accepts a valid skin id", () => {
+    const { settings, issues } = validateSettings({ skin: "kagekin-night" });
+    expect(settings.skin).toBe("kagekin-night");
+    expect(issues).toEqual([]);
+  });
+
+  it("rejects malformed skin ids back to the default", () => {
+    for (const bad of ["../etc", "Kagekin", "has space", "x".repeat(40), 7]) {
+      const { settings, issues } = validateSettings({ skin: bad });
+      expect(settings.skin).toBe("kagekin");
+      expect(issues.length).toBeGreaterThan(0);
+    }
   });
 
   it("survives corrupted configuration", () => {

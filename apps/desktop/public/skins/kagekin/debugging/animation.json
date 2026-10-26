@@ -1,0 +1,80 @@
+{
+  "state": "debugging",
+  "canvas": {
+    "width": 160,
+    "height": 160
+  },
+  "frame_count": 8,
+  "frame_order": [
+    "frames/frame_000.png",
+    "frames/frame_001.png",
+    "frames/frame_002.png",
+    "frames/frame_003.png",
+    "frames/frame_004.png",
+    "frames/frame_005.png",
+    "frames/frame_006.png",
+    "frames/frame_007.png"
+  ],
+  "frame_duration_ms": 180,
+  "loop": true,
+  "reduced_motion": {
+    "static_image": "pose.png"
+  },
+  "synthetic_frames": [],
+  "source": {
+    "file": "kagekin_all_states_sprite_sheet.png",
+    "panel_x_offset": 576,
+    "panel_width": 265,
+    "grid_cells": [
+      {
+        "x0": 15,
+        "x1": 74,
+        "y0": 336,
+        "y_cut": 406
+      },
+      {
+        "x0": 78,
+        "x1": 137,
+        "y0": 336,
+        "y_cut": 406
+      },
+      {
+        "x0": 141,
+        "x1": 201,
+        "y0": 336,
+        "y_cut": 406
+      },
+      {
+        "x0": 205,
+        "x1": 263,
+        "y0": 336,
+        "y_cut": 406
+      },
+      {
+        "x0": 15,
+        "x1": 74,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 78,
+        "x1": 137,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 141,
+        "x1": 201,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 205,
+        "x1": 263,
+        "y0": 427,
+        "y_cut": 499
+      }
+    ]
+  },
+  "notes": "controlled working loop"
+}
