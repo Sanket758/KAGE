@@ -2,12 +2,37 @@
   "format": "kagekin-sprite-skin/1",
   "frameSize": 160,
   "states": {
-    "sleeping":    { "frames": 8, "durationMs": 260, "loop": true },
-    "searching":   { "frames": 8, "durationMs": 160, "loop": true },
-    "debugging":   { "frames": 8, "durationMs": 180, "loop": true },
-    "celebrating": { "frames": 8, "durationMs": 120, "loop": false, "holdLast": true },
-    "reading":     { "frames": 8, "durationMs": 220, "loop": true },
-    "error":       { "frames": 8, "durationMs": 300, "loop": true }
+    "sleeping": {
+      "frames": 8,
+      "durationMs": 260,
+      "loop": true
+    },
+    "searching": {
+      "frames": 8,
+      "durationMs": 160,
+      "loop": true
+    },
+    "debugging": {
+      "frames": 8,
+      "durationMs": 180,
+      "loop": true
+    },
+    "celebrating": {
+      "frames": 8,
+      "durationMs": 120,
+      "loop": false,
+      "holdLast": true
+    },
+    "reading": {
+      "frames": 8,
+      "durationMs": 220,
+      "loop": true
+    },
+    "error": {
+      "frames": 8,
+      "durationMs": 300,
+      "loop": true
+    }
   },
   "characterMap": {
     "sleeping": "sleeping",

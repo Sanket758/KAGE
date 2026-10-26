@@ -1,0 +1,80 @@
+{
+  "state": "searching",
+  "canvas": {
+    "width": 160,
+    "height": 160
+  },
+  "frame_count": 8,
+  "frame_order": [
+    "frames/frame_000.png",
+    "frames/frame_001.png",
+    "frames/frame_002.png",
+    "frames/frame_003.png",
+    "frames/frame_004.png",
+    "frames/frame_005.png",
+    "frames/frame_006.png",
+    "frames/frame_007.png"
+  ],
+  "frame_duration_ms": 160,
+  "loop": true,
+  "reduced_motion": {
+    "static_image": "pose.png"
+  },
+  "synthetic_frames": [],
+  "source": {
+    "file": "kagekin_all_states_sprite_sheet.png",
+    "panel_x_offset": 294,
+    "panel_width": 282,
+    "grid_cells": [
+      {
+        "x0": 11,
+        "x1": 76,
+        "y0": 336,
+        "y_cut": 406
+      },
+      {
+        "x0": 80,
+        "x1": 143,
+        "y0": 336,
+        "y_cut": 406
+      },
+      {
+        "x0": 147,
+        "x1": 209,
+        "y0": 336,
+        "y_cut": 406
+      },
+      {
+        "x0": 213,
+        "x1": 276,
+        "y0": 336,
+        "y_cut": 406
+      },
+      {
+        "x0": 11,
+        "x1": 76,
+        "y0": 427,
+        "y_cut": 498
+      },
+      {
+        "x0": 80,
+        "x1": 143,
+        "y0": 427,
+        "y_cut": 498
+      },
+      {
+        "x0": 147,
+        "x1": 209,
+        "y0": 427,
+        "y_cut": 498
+      },
+      {
+        "x0": 213,
+        "x1": 276,
+        "y0": 427,
+        "y_cut": 498
+      }
+    ]
+  },
+  "notes": "investigative sweep"
+}

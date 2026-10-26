@@ -1,0 +1,81 @@
+{
+  "state": "celebrating",
+  "canvas": {
+    "width": 160,
+    "height": 160
+  },
+  "frame_count": 8,
+  "frame_order": [
+    "frames/frame_000.png",
+    "frames/frame_001.png",
+    "frames/frame_002.png",
+    "frames/frame_003.png",
+    "frames/frame_004.png",
+    "frames/frame_005.png",
+    "frames/frame_006.png",
+    "frames/frame_007.png"
+  ],
+  "frame_duration_ms": 120,
+  "loop": false,
+  "hold_last_frame": true,
+  "reduced_motion": {
+    "static_image": "pose.png"
+  },
+  "synthetic_frames": [],
+  "source": {
+    "file": "kagekin_all_states_sprite_sheet.png",
+    "panel_x_offset": 841,
+    "panel_width": 264,
+    "grid_cells": [
+      {
+        "x0": 17,
+        "x1": 80,
+        "y0": 336,
+        "y_cut": 407
+      },
+      {
+        "x0": 84,
+        "x1": 144,
+        "y0": 336,
+        "y_cut": 407
+      },
+      {
+        "x0": 148,
+        "x1": 206,
+        "y0": 336,
+        "y_cut": 407
+      },
+      {
+        "x0": 210,
+        "x1": 272,
+        "y0": 336,
+        "y_cut": 407
+      },
+      {
+        "x0": 17,
+        "x1": 80,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 84,
+        "x1": 144,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 148,
+        "x1": 206,
+        "y0": 427,
+        "y_cut": 499
+      },
+      {
+        "x0": 210,
+        "x1": 272,
+        "y0": 427,
+        "y_cut": 499
+      }
+    ]
+  },
+  "notes": "short celebration burst, holds final pose"
+}
