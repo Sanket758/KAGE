@@ -1,0 +1,30 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - heading "KAGE owl study" [level=1] [ref=f5e3]:
+      - text: KAGE
+      - generic [ref=f5e4]: owl study
+  - main [ref=f5e5]:
+    - region "Cosmic owl mascot preview" [ref=f5e6]
+    - generic [ref=f5e16]:
+      - paragraph [ref=f5e17]: Idle
+      - paragraph [ref=f5e18]: Waiting for the next prompt.
+    - generic [ref=f5e19]:
+      - group "Pose" [ref=f5e20]:
+        - button "Idle" [pressed] [ref=f5e21] [cursor=pointer]
+        - button "Thinking" [ref=f5e22] [cursor=pointer]
+        - button "Typing" [ref=f5e23] [cursor=pointer]
+        - button "Building" [ref=f5e24] [cursor=pointer]
+        - button "Juggling" [ref=f5e25] [cursor=pointer]
+        - button "Conducting" [ref=f5e26] [cursor=pointer]
+      - generic [ref=f5e27]:
+        - button "Cycle" [ref=f5e28] [cursor=pointer]
+        - generic [ref=f5e32]:
+          - generic [ref=f5e33]: Size
+          - slider "Size" [ref=f5e34] [cursor=pointer]: "106"
+          - status [ref=f5e35]: 1.06×
+        - group "Backdrop" [ref=f5e36]:
+          - button "Night" [pressed] [ref=f5e37] [cursor=pointer]
+          - button "Paper" [ref=f5e38] [cursor=pointer]
+          - button "Checker" [ref=f5e39] [cursor=pointer]
+      - paragraph [ref=f5e40]: 1–6 switch pose · Space toggles cycle
+    - generic [ref=f5e41]: Poses cropped from the supplied owl sheet, not redrawn. Switched by hand; not wired to OpenCode yet.

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+target/
+.vite/
+*.log
+.DS_Store
+coverage/
+apps/desktop/src-tauri/gen/
+
+# local scratch
+.tmp/

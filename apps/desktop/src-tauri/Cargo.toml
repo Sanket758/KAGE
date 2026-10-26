@@ -1,0 +1,29 @@
+[package]
+name = "kage"
+version = "0.1.0"
+description = "A little spirit. A lot of signal."
+authors = ["KAGE contributors"]
+edition = "2021"
+rust-version = "1.77"
+license = "MIT"
+
+[lib]
+name = "kage_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[features]
+# Embed the built frontend instead of loading the dev server.
+# Enabled by `tauri build`; pass it explicitly for a plain cargo release build.
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+
+[profile.dev]
+incremental = true

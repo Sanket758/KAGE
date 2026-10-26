@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07080e">
+<title>KAGE — owl study</title>
+<style>
+  :root {
+    --ink: #07080e;
+    --ivory: #f3ecdd;
+    --dim: #b6ae9f;
+    --faint: #8d8778;
+    --gold: #f6c66a;
+    --line: rgba(243, 236, 221, 0.12);
+    --font-display: "EB Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --font-ui: "Gillius ADF", "Cabin", "Fira Sans", system-ui, sans-serif;
+    --stage-w: min(560px, calc(100vw - 48px));
+    --scale: 1.06;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; }
+
+  body {
+    min-height: 100svh;
+    padding: 30px 24px 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background:
+      radial-gradient(75% 50% at 50% 4%, rgba(246, 198, 106, 0.055), transparent 70%),
+      radial-gradient(50% 40% at 88% 72%, rgba(108, 146, 158, 0.05), transparent 70%),
+      var(--ink);
+    color: var(--ivory);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection { background: rgba(246, 198, 106, 0.25); color: var(--ivory); }
+
+  button, input { font: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+
+  .masthead {
+    width: var(--stage-w);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: auto;
+    margin-bottom: 30px;
+  }
+
+  main { margin-bottom: auto; }
+
+  .mark {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--ivory);
+  }
+
+  .mark span {
+    font-style: italic;
+    font-weight: 400;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: var(--dim);
+  }
+
+  .stage {
+    width: var(--stage-w);
+    aspect-ratio: 560 / 470;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    border-radius: 24px;
+    border: 1px solid rgba(243, 236, 221, 0.09);
+    background: #0b0c17;
+    box-shadow:
+      0 40px 90px -42px rgba(0, 0, 0, 0.95),
+      0 2px 8px rgba(0, 0, 0, 0.45);
+    transition: border-color 420ms ease, box-shadow 420ms ease;
+    animation: rise 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .sky, .checker, .vignette, .stars {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .sky--night {
+    background:
+      radial-gradient(46% 40% at 50% 72%, rgba(129, 108, 206, 0.22), transparent 72%),
+      radial-gradient(34% 38% at 80% 58%, rgba(58, 132, 146, 0.13), transparent 72%),
+      radial-gradient(120% 104% at 50% 8%, #171a2e 0%, #0e101d 52%, #080911 100%);
+    opacity: 1;
+    transition: opacity 460ms ease;
+  }
+
+  .sky--paper {
+    background:
+      radial-gradient(120% 90% at 50% -10%, #fdf8ec 0%, #f2e8d3 58%, #e5d8bd 100%);
+    opacity: 0;
+    transition: opacity 460ms ease;
+  }
+
+  .checker {
+    background:
+      repeating-conic-gradient(from 0deg, #d3ccbe 0% 25%, #eae4d7 0% 50%) 0 0 / 22px 22px;
+    opacity: 0;
+    transition: opacity 460ms ease;
+  }
+
+  .stars {
+    width: 100%;
+    height: 100%;
+    opacity: 0.9;
+    transition: opacity 460ms ease;
+  }
+
+  .vignette {
+    background: radial-gradient(112% 96% at 50% 42%, transparent 52%, rgba(3, 4, 10, 0.42) 100%);
+    transition: background 460ms ease;
+  }
+
+  .stage[data-bg="paper"] { border-color: rgba(42, 33, 19, 0.16); }
+  .stage[data-bg="paper"] .sky--night,
+  .stage[data-bg="checker"] .sky--night { opacity: 0; }
+  .stage[data-bg="paper"] .sky--paper { opacity: 1; }
+  .stage[data-bg="checker"] .checker { opacity: 1; }
+  .stage[data-bg="paper"] .stars,
+  .stage[data-bg="checker"] .stars { opacity: 0; }
+  .stage[data-bg="paper"] .vignette {
+    background: radial-gradient(112% 96% at 50% 42%, transparent 58%, rgba(90, 68, 32, 0.14) 100%);
+  }
+  .stage[data-bg="checker"] .vignette {
+    background: radial-gradient(112% 96% at 50% 42%, transparent 58%, rgba(40, 32, 18, 0.16) 100%);
+  }
+
+  .stage[data-bg="paper"] { --shadow-rgb: 66, 50, 24; --shadow-a: 0.32; }
+  .stage[data-bg="checker"] { --shadow-rgb: 34, 28, 18; --shadow-a: 0.36; }
+  .stage { --shadow-rgb: 148, 132, 224; --shadow-a: 0.17; }
+
+  .mascot-scale {
+    position: absolute;
+    inset: 0;
+    transform: scale(var(--scale));
+    transform-origin: 50% 93.2%;
+    transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  .ground-shadow {
+    position: absolute;
+    left: 50%;
+    top: 93.8%;
+    width: 34%;
+    height: 7%;
+    z-index: 0;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(var(--shadow-rgb), var(--shadow-a)) 0%,
+      rgba(var(--shadow-rgb), calc(var(--shadow-a) * 0.45)) 46%,
+      rgba(var(--shadow-rgb), 0) 72%
+    );
+    filter: blur(6px);
+    transform: translate(-50%, -50%) scale(1);
+    animation: shadow-breathe 4.8s ease-in-out infinite;
+  }
+
+  .mascot-bob {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    animation: bob 4.8s ease-in-out infinite;
+  }
+
+  .pose-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    transform: scale(0.985);
+    transition:
+      opacity 220ms ease,
+      transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .pose-layer.is-active {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .readout {
+    width: var(--stage-w);
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  .pose-name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: 0.005em;
+    color: var(--ivory);
+  }
+
+  .pose-line {
+    margin: 5px 0 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--dim);
+  }
+
+  .controls {
+    width: var(--stage-w);
+    margin-top: 26px;
+  }
+
+  .poses {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .pose {
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--dim);
+    font-size: 12.5px;
+    letter-spacing: 0.015em;
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+  }
+
+  .pose:hover { color: var(--ivory); background: rgba(243, 236, 221, 0.06); }
+
+  .pose[aria-pressed="true"] {
+    background: var(--gold);
+    color: #1b1204;
+    font-weight: 600;
+    box-shadow: 0 8px 22px -10px rgba(246, 198, 106, 0.6);
+  }
+
+  .pose[aria-pressed="true"]:hover { background: #ffd482; }
+
+  .settings {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px 22px;
+  }
+
+  .cycle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 2px;
+    border: 0;
+    background: none;
+    color: var(--dim);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: color 180ms ease;
+  }
+
+  .cycle:hover { color: var(--ivory); }
+  .cycle[aria-pressed="true"] { color: var(--gold); }
+  .cycle svg { width: 10px; height: 10px; fill: currentColor; flex: none; }
+
+  .size {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 11.5px;
+    color: var(--faint);
+  }
+
+  .size output {
+    min-width: 40px;
+    font-size: 11.5px;
+    color: var(--dim);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .size input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 118px;
+    height: 20px;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .size input::-webkit-slider-runnable-track {
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(
+      to right,
+      var(--gold) 0 calc(var(--fill, 86.7) * 1%),
+      rgba(243, 236, 221, 0.16) calc(var(--fill, 86.7) * 1%) 100%
+    );
+  }
+
+  .size input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    margin-top: -5.5px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 3px var(--ink);
+  }
+
+  .size input::-moz-range-track {
+    height: 2px;
+    border-radius: 2px;
+    background: rgba(243, 236, 221, 0.16);
+  }
+
+  .size input::-moz-range-progress {
+    height: 2px;
+    border-radius: 2px;
+    background: var(--gold);
+  }
+
+  .size input::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 3px var(--ink);
+  }
+
+  .backdrop {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    background: rgba(243, 236, 221, 0.045);
+  }
+
+  .backdrop button {
+    padding: 5px 10px;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--faint);
+    font-size: 11px;
+    letter-spacing: 0.015em;
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease;
+  }
+
+  .backdrop button:hover { color: var(--ivory); }
+
+  .backdrop button[aria-pressed="true"] {
+    background: rgba(243, 236, 221, 0.1);
+    color: var(--ivory);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  .hint {
+    margin: 14px 0 0;
+    text-align: center;
+    font-size: 11px;
+    color: var(--faint);
+  }
+
+  kbd {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: rgba(243, 236, 221, 0.07);
+    box-shadow: inset 0 0 0 1px rgba(243, 236, 221, 0.08);
+    font-family: var(--font-ui);
+    font-size: 10px;
+    color: var(--dim);
+  }
+
+  .footnote {
+    width: var(--stage-w);
+    margin-top: 32px;
+    text-align: center;
+    font-size: 10.5px;
+    line-height: 1.6;
+    color: var(--faint);
+  }
+
+  .readout, .controls, .footnote {
+    animation: rise 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .readout { animation-delay: 70ms; }
+  .controls { animation-delay: 140ms; }
+  .footnote { animation-delay: 210ms; }
+
+  .twinkle { animation: twinkle 6s ease-in-out infinite; }
+  .twinkle:nth-of-type(3n) { animation-duration: 8.5s; animation-delay: -2.4s; }
+  .twinkle:nth-of-type(4n) { animation-duration: 7.2s; animation-delay: -4.1s; }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  @keyframes shadow-breathe {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(0.94); opacity: 0.72; }
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.18; }
+    50% { opacity: 0.85; }
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 620px) {
+    body { padding: 20px 14px 26px; }
+    :root { --stage-w: calc(100vw - 28px); }
+    .masthead { margin-bottom: 20px; }
+    .pose { padding: 6px 10px; font-size: 12px; }
+    .settings { justify-content: center; }
+    .size input { width: 96px; }
+    .pose-name { font-size: 26px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <h1 class="mark">KAGE <span>owl study</span></h1>
+</header>
+
+<main>
+  <section class="stage" id="stage" data-bg="night" aria-label="Cosmic owl mascot preview">
+    <div class="sky sky--night"></div>
+    <div class="sky sky--paper"></div>
+    <div class="checker"></div>
+    <svg class="stars" viewBox="0 0 560 470" aria-hidden="true" focusable="false">
+      <g fill="#f6efdd">
+        <circle cx="38" cy="44" r="1.2" opacity=".5"/>
+        <circle cx="96" cy="26" r="0.9" opacity=".35"/>
+        <circle cx="168" cy="58" r="1.4" opacity=".5" class="twinkle"/>
+        <circle cx="246" cy="30" r="1.1" opacity=".7"/>
+        <circle cx="312" cy="66" r="0.8" opacity=".3"/>
+        <circle cx="390" cy="38" r="1.3" opacity=".55"/>
+        <circle cx="452" cy="72" r="0.9" opacity=".4"/>
+        <circle cx="516" cy="34" r="1.4" opacity=".6" class="twinkle"/>
+        <circle cx="26" cy="128" r="1" opacity=".4"/>
+        <circle cx="84" cy="164" r="0.8" opacity=".25"/>
+        <circle cx="500" cy="124" r="1.2" opacity=".5"/>
+        <circle cx="542" cy="172" r="0.8" opacity=".3"/>
+        <circle cx="118" cy="96" r="0.8" opacity=".35"/>
+        <circle cx="444" cy="108" r="0.7" opacity=".3"/>
+        <circle cx="34" cy="238" r="0.9" opacity=".35"/>
+        <circle cx="70" cy="292" r="0.7" opacity=".25"/>
+        <circle cx="516" cy="226" r="1.1" opacity=".45"/>
+        <circle cx="548" cy="278" r="0.8" opacity=".3"/>
+        <circle cx="20" cy="320" r="0.8" opacity=".3"/>
+        <circle cx="58" cy="378" r="1.3" opacity=".45" class="twinkle"/>
+        <circle cx="96" cy="428" r="0.8" opacity=".25"/>
+        <circle cx="500" cy="372" r="1" opacity=".35"/>
+        <circle cx="532" cy="428" r="0.8" opacity=".3"/>
+        <circle cx="38" cy="452" r="0.8" opacity=".25"/>
+        <circle cx="470" cy="450" r="1.1" opacity=".4"/>
+        <circle cx="206" cy="110" r="0.6" opacity=".22"/>
+        <circle cx="352" cy="92" r="0.6" opacity=".22"/>
+        <circle cx="286" cy="140" r="0.6" opacity=".2"/>
+      </g>
+      <g fill="#d9d0ff">
+        <circle cx="66" cy="118" r="0.8" opacity=".3"/>
+        <circle cx="494" cy="330" r="0.7" opacity=".3"/>
+        <circle cx="128" cy="424" r="0.7" opacity=".25"/>
+        <circle cx="456" cy="396" r="0.7" opacity=".25"/>
+      </g>
+      <g fill="#ffe6ad">
+        <circle cx="210" cy="22" r="1" opacity=".45" class="twinkle"/>
+        <circle cx="538" cy="96" r="0.9" opacity=".35"/>
+        <circle cx="64" cy="202" r="0.8" opacity=".3"/>
+      </g>
+    </svg>
+
+    <div class="vignette"></div>
+
+    <div class="mascot-scale">
+      <div class="ground-shadow"></div>
+      <div class="mascot-bob">
+        <img class="pose-layer is-active" data-pose="idle" src="poses/idle.png" alt="" aria-hidden="true" draggable="false">
+        <img class="pose-layer" data-pose="thinking" src="poses/thinking.png" alt="" aria-hidden="true" draggable="false">
+        <img class="pose-layer" data-pose="typing" src="poses/typing.png" alt="" aria-hidden="true" draggable="false">
+        <img class="pose-layer" data-pose="building" src="poses/building.png" alt="" aria-hidden="true" draggable="false">
+        <img class="pose-layer" data-pose="juggling" src="poses/juggling.png" alt="" aria-hidden="true" draggable="false">
+        <img class="pose-layer" data-pose="conducting" src="poses/conducting.png" alt="" aria-hidden="true" draggable="false">
+      </div>
+    </div>
+  </section>
+
+  <section class="readout" aria-live="polite" aria-atomic="true">
+    <p class="pose-name" id="pose-name">Idle</p>
+    <p class="pose-line" id="pose-line">Waiting for the next prompt.</p>
+  </section>
+
+  <section class="controls">
+    <div class="poses" role="group" aria-label="Pose">
+      <button class="pose" data-pose="idle" aria-pressed="true">Idle</button>
+      <button class="pose" data-pose="thinking" aria-pressed="false">Thinking</button>
+      <button class="pose" data-pose="typing" aria-pressed="false">Typing</button>
+      <button class="pose" data-pose="building" aria-pressed="false">Building</button>
+      <button class="pose" data-pose="juggling" aria-pressed="false">Juggling</button>
+      <button class="pose" data-pose="conducting" aria-pressed="false">Conducting</button>
+    </div>
+
+    <div class="settings">
+      <button class="cycle" id="cycle" aria-pressed="false">
+        <svg id="cycle-icon" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.6v8.8L10.4 6z"/></svg>
+        <span id="cycle-label">Cycle</span>
+      </button>
+
+      <div class="size">
+        <label for="size">Size</label>
+        <input id="size" type="range" min="80" max="110" step="1" value="106" aria-valuetext="1.06×" style="--fill: 86.7">
+        <output id="size-out" for="size">1.06×</output>
+      </div>
+
+      <div class="backdrop" role="group" aria-label="Backdrop">
+        <button data-bg="night" aria-pressed="true">Night</button>
+        <button data-bg="paper" aria-pressed="false">Paper</button>
+        <button data-bg="checker" aria-pressed="false">Checker</button>
+      </div>
+    </div>
+
+    <p class="hint"><kbd>1</kbd>–<kbd>6</kbd> switch pose · <kbd>Space</kbd> toggles cycle</p>
+  </section>
+
+  <footer class="footnote">
+    Poses cropped from the supplied owl sheet, not redrawn. Switched by hand; not wired to OpenCode yet.
+  </footer>
+</main>
+
+<script>
+  const POSES = {
+    idle: { name: "Idle", line: "Waiting for the next prompt." },
+    thinking: { name: "Thinking", line: "Working through the problem." },
+    typing: { name: "Typing", line: "Writing the response." },
+    building: { name: "Building", line: "Editing the project." },
+    juggling: { name: "Juggling", line: "Running tools in parallel." },
+    conducting: { name: "Conducting", line: "Directing the session." },
+  };
+  const ORDER = ["idle", "thinking", "typing", "building", "juggling", "conducting"];
+  const CYCLE_MS = 3200;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  const stage = document.getElementById("stage");
+  const poseName = document.getElementById("pose-name");
+  const poseLine = document.getElementById("pose-line");
+  const cycleButton = document.getElementById("cycle");
+  const cycleLabel = document.getElementById("cycle-label");
+  const cycleIcon = document.getElementById("cycle-icon");
+  const sizeInput = document.getElementById("size");
+  const sizeOut = document.getElementById("size-out");
+
+  const layers = new Map(
+    [...document.querySelectorAll(".pose-layer")].map((el) => [el.dataset.pose, el])
+  );
+  const chips = [...document.querySelectorAll(".pose")];
+  const backdropButtons = [...document.querySelectorAll(".backdrop button")];
+
+  let current = "idle";
+  let cycling = false;
+  let timer = null;
+
+  function animateReadout() {
+    if (reduced.matches || !poseName.animate) return;
+    poseName.animate(
+      [
+        { opacity: 0, transform: "translateY(4px)" },
+        { opacity: 1, transform: "translateY(0)" },
+      ],
+      { duration: 260, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+    );
+  }
+
+  function setPose(id) {
+    if (!POSES[id] || id === current) return;
+    current = id;
+    layers.forEach((el, key) => el.classList.toggle("is-active", key === id));
+    chips.forEach((chip) => chip.setAttribute("aria-pressed", String(chip.dataset.pose === id)));
+    poseName.textContent = POSES[id].name;
+    poseLine.textContent = POSES[id].line;
+    animateReadout();
+  }
+
+  function stopCycle() {
+    cycling = false;
+    clearInterval(timer);
+    timer = null;
+    cycleButton.setAttribute("aria-pressed", "false");
+    cycleLabel.textContent = "Cycle";
+    cycleIcon.innerHTML = '<path d="M3 1.6v8.8L10.4 6z"/>';
+  }
+
+  function startCycle() {
+    cycling = true;
+    cycleButton.setAttribute("aria-pressed", "true");
+    cycleLabel.textContent = "Cycling";
+    cycleIcon.innerHTML = '<path d="M3 1.4h2.2v9.2H3zM6.8 1.4H9v9.2H6.8z"/>';
+    timer = setInterval(() => {
+      const next = ORDER[(ORDER.indexOf(current) + 1) % ORDER.length];
+      setPose(next);
+    }, CYCLE_MS);
+  }
+
+  cycleButton.addEventListener("click", () => (cycling ? stopCycle() : startCycle()));
+
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      stopCycle();
+      setPose(chip.dataset.pose);
+    });
+  });
+
+  backdropButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      stage.dataset.bg = button.dataset.bg;
+      backdropButtons.forEach((other) =>
+        other.setAttribute("aria-pressed", String(other === button))
+      );
+    });
+  });
+
+  sizeInput.addEventListener("input", () => {
+    const scale = Number(sizeInput.value) / 100;
+    stage.style.setProperty("--scale", scale);
+    const pct = ((scale - 0.8) / (1.1 - 0.8)) * 100;
+    sizeInput.style.setProperty("--fill", pct.toFixed(1));
+    sizeOut.textContent = scale.toFixed(2) + "×";
+    sizeInput.setAttribute("aria-valuetext", scale.toFixed(2) + "×");
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target.isContentEditable
+    ) {
+      return;
+    }
+
+    if (event.key >= "1" && event.key <= "6") {
+      stopCycle();
+      setPose(ORDER[Number(event.key) - 1]);
+    } else if (event.code === "Space" && !(target instanceof HTMLButtonElement)) {
+      // Leave Space alone when a control has focus: it should activate it.
+      event.preventDefault();
+      cycling ? stopCycle() : startCycle();
+    }
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && cycling) stopCycle();
+  });
+</script>
+</body>
+</html>

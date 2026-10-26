@@ -1,0 +1,36 @@
+{
+  "name": "kage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A little spirit. A lot of signal. Pixel-art desktop companion for OpenCode.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/desktop"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test",
+    "dev": "npm run tauri:dev --workspace @kage/desktop",
+    "build": "npm run build --workspace @kage/desktop",
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "preview:sprites": "tsx scripts/preview-sprites.ts",
+    "tauri": "npm run tauri --workspace @kage/desktop"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@tauri-apps/api": "^2.9.0",
+    "@tauri-apps/cli": "^2.9.0",
+    "@types/node": "^22.18.0",
+    "esbuild": "^0.25.9",
+    "svelte": "^5.39.0",
+    "svelte-check": "^4.3.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.4",
+    "vitest": "^3.2.4"
+  }
+}
