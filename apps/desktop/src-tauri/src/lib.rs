@@ -9,6 +9,7 @@ struct AppState {
     status: bridge::StatusHandle,
     bridge: Mutex<Option<bridge::Bridge>>,
     move_mode: AtomicBool,
+    last_position_save: Mutex<std::time::Instant>,
 }
 
 #[tauri::command]
@@ -68,8 +69,7 @@ fn apply_move_mode(app: &tauri::AppHandle, enabled: bool) -> bool {
         let _ = window.set_focus();
     } else {
         let _ = window.set_focusable(false);
-        let _ = window.set_ignore_cursor_events(true);
-        save_position(&window);
+        sprite_input_shape(&window);
     }
     let _ = app.emit("kage://move-mode", enabled);
     enabled
@@ -116,6 +116,54 @@ fn apply_gtk_transparency(window: &tauri::WebviewWindow) {
 
 #[cfg(not(target_os = "linux"))]
 fn apply_gtk_transparency(_window: &tauri::WebviewWindow) {}
+
+/// Limit the window's input region to the sprite's square, centered like the
+/// renderer draws it (fit = min(w,h) * 0.94 * scale). Everywhere else the
+/// pointer passes through to the apps below. This is what makes the mascot
+/// grabbable on Wayland — global shortcuts are unreliable there, but a hit
+/// region plus `startDragging()` is not.
+#[cfg(target_os = "linux")]
+fn sprite_input_shape(window: &tauri::WebviewWindow) {
+    use gtk::prelude::*;
+
+    let Ok(gtk_window) = window.gtk_window() else {
+        return;
+    };
+    let Some(gdk_window) = gtk::prelude::WidgetExt::window(&gtk_window) else {
+        return;
+    };
+    let (width, height) = (gdk_window.width(), gdk_window.height());
+    if width <= 0 || height <= 0 {
+        return;
+    }
+    let scale = settings::read_settings()
+        .get("scale")
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(1.0)
+        .clamp(0.5, 3.0);
+    let side = ((width.min(height) as f64) * 0.94 * scale).round() as i32;
+    let side = side.min(width).min(height);
+    let rect = cairo::RectangleInt::new((width - side) / 2, (height - side) / 2, side, side);
+    let region = cairo::Region::create_rectangle(&rect);
+    gdk_window.input_shape_combine_region(&region, 0, 0);
+}
+
+#[cfg(not(target_os = "linux"))]
+fn sprite_input_shape(_window: &tauri::WebviewWindow) {}
+
+/// Position saves are throttled because `Moved` fires at pointer frequency
+/// while dragging; the final position is always saved on exit.
+fn save_position_throttled(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let state = app.state::<AppState>();
+        let mut last = state.last_position_save.lock().expect("position mutex");
+        if last.elapsed() < std::time::Duration::from_millis(800) {
+            return;
+        }
+        *last = std::time::Instant::now();
+        save_position(&window);
+    }
+}
 
 fn position_is_visible(window: &tauri::WebviewWindow, x: i32, y: i32) -> bool {
     match window.available_monitors() {
@@ -168,6 +216,7 @@ pub fn run() {
             status: bridge::StatusHandle::new(),
             bridge: Mutex::new(None),
             move_mode: AtomicBool::new(false),
+            last_position_save: Mutex::new(std::time::Instant::now()),
         })
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -245,6 +294,9 @@ pub fn run() {
                 // show(); tao unwraps it when applying the input shape, so
                 // this must come after show(), never before.
                 let _ = window.set_ignore_cursor_events(true);
+                // Then narrow the input region to the sprite itself so the
+                // mascot is directly grabbable and the rest stays click-through.
+                sprite_input_shape(&window);
             }
 
             // Ctrl+Alt+M toggles move mode so the mascot can be repositioned.
@@ -264,12 +316,22 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("failed to build KAGE")
         .run(|handle, event| {
-            if let tauri::RunEvent::Exit = event {
-                if let Ok(mut guard) = handle.state::<AppState>().bridge.lock() {
-                    if let Some(bridge) = guard.as_mut() {
-                        bridge.stop();
+            match &event {
+                tauri::RunEvent::WindowEvent {
+                    event: tauri::WindowEvent::Moved(_),
+                    ..
+                } => save_position_throttled(handle),
+                tauri::RunEvent::Exit => {
+                    if let Some(window) = handle.get_webview_window("main") {
+                        save_position(&window);
+                    }
+                    if let Ok(mut guard) = handle.state::<AppState>().bridge.lock() {
+                        if let Some(bridge) = guard.as_mut() {
+                            bridge.stop();
+                        }
                     }
                 }
+                _ => {}
             }
         });
 }

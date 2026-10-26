@@ -30,20 +30,22 @@ body,
   height: 176px;
 }
 
-/* Move mode: the overlay becomes interactive so it can be dragged. */
+/* The Rust side narrows the window input region to the sprite, so events
+   only ever arrive on the mascot; it is draggable at any time. */
 .app {
   position: relative;
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.app:active {
+  cursor: grabbing;
 }
 
 .app.move-mode {
-  pointer-events: auto;
   outline: 2px dashed rgba(126, 231, 255, 0.85);
   outline-offset: -2px;
   cursor: move;
-}
-
-.app.move-mode .creature {
-  pointer-events: none;
 }
 
 .move-hint {

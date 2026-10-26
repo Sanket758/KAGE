@@ -34,7 +34,7 @@
   );
 
   function startDrag(event: MouseEvent): void {
-    if (!moveMode || event.button !== 0) return;
+    if (event.button !== 0) return;
     void getCurrentWindow().startDragging();
   }
 
