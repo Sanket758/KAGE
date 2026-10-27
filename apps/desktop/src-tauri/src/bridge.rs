@@ -766,6 +766,9 @@ mod tests {
         assert_eq!(status.get(), BridgeStatus::Disconnected);
 
         bridge.stop();
+        // Only Unix removes the endpoint file on stop; the Windows port file
+        // is an ordinary file that the next run overwrites.
+        #[cfg(unix)]
         assert!(!paths.socket_path.exists());
         let _ = fs::remove_dir_all(&dir);
     }
