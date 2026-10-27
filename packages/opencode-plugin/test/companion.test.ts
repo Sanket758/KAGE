@@ -30,11 +30,13 @@ describe("resolveCompanionCommand", () => {
   });
 
   it("falls back to ~/.local/bin/KAGE.AppImage", () => {
-    const lookup = lookupFactory(new Set(["/home/u/.local/bin/KAGE.AppImage"]), {
+    // join-built so the fixture matches the implementation on every platform.
+    const appimage = join("/home/u", ".local", "bin", "KAGE.AppImage");
+    const lookup = lookupFactory(new Set([appimage]), {
       PATH: "/usr/local/bin:/usr/bin",
       HOME: "/home/u",
     });
-    expect(resolveCompanionCommand(lookup)).toBe("/home/u/.local/bin/KAGE.AppImage");
+    expect(resolveCompanionCommand(lookup)).toBe(appimage);
   });
 
   it("checks the system install locations last", () => {
