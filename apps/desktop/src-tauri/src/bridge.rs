@@ -581,14 +581,17 @@ fn handle_client<S: TryCloneStream>(
         return Ok(());
     }
 
-    stream.write_all(
-        format!("{{\"type\":\"welcome\",\"version\":{PROTOCOL_VERSION}}}\n").as_bytes(),
-    )?;
-    stream.flush()?;
+    // Mark the client connected BEFORE welcoming it: a client that has read
+    // its welcome must observe Connected status deterministically (the
+    // Windows scheduler exposed this ordering race).
     let already_connected = clients.fetch_add(1, Ordering::SeqCst);
     if already_connected == 0 && status.set(BridgeStatus::Connected) {
         status_sink(BridgeStatus::Connected);
     }
+    stream.write_all(
+        format!("{{\"type\":\"welcome\",\"version\":{PROTOCOL_VERSION}}}\n").as_bytes(),
+    )?;
+    stream.flush()?;
 
     let mut window = Instant::now();
     let mut count = 0u32;
