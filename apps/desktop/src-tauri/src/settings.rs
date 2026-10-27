@@ -1,6 +1,7 @@
 use serde_json::Value;
 use std::env;
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
@@ -12,6 +13,10 @@ pub fn config_home() -> PathBuf {
     }
     if let Some(home) = env::var_os("HOME") {
         return PathBuf::from(home).join(".config");
+    }
+    #[cfg(windows)]
+    if let Some(dir) = env::var_os("LOCALAPPDATA") {
+        return PathBuf::from(dir);
     }
     PathBuf::from("/tmp").join(format!("kage-{}", unsafe { libc::getuid() }))
 }
@@ -48,10 +53,12 @@ fn write_settings_to(path: &Path, value: &Value) -> Result<(), String> {
     }
     let parent = path.parent().ok_or("settings path has no parent")?;
     fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    #[cfg(unix)]
     let _ = fs::set_permissions(parent, fs::Permissions::from_mode(0o700));
 
     let temporary = path.with_extension("json.tmp");
     fs::write(&temporary, serialized).map_err(|error| error.to_string())?;
+    #[cfg(unix)]
     fs::set_permissions(&temporary, fs::Permissions::from_mode(0o600))
         .map_err(|error| error.to_string())?;
     fs::rename(&temporary, path).map_err(|error| error.to_string())?;
@@ -79,8 +86,11 @@ mod tests {
         let settings = json!({ "scale": 1.5, "position": { "x": 10, "y": 20 } });
         write_settings_to(&path, &settings).unwrap();
         assert_eq!(read_settings_from(&path), Some(settings));
-        let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
-        assert_eq!(mode, 0o600);
+        #[cfg(unix)]
+        {
+            let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+        }
     }
 
     #[test]

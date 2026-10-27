@@ -38,7 +38,9 @@
     "active": true,
     "targets": [
       "deb",
-      "appimage"
+      "appimage",
+      "msi",
+      "nsis"
     ],
     "category": "Utility",
     "shortDescription": "A little spirit. A lot of signal.",

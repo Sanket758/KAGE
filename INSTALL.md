@@ -90,9 +90,26 @@ opencode plugin add github:Sanket758/KAGE
   install are equivalent; check the plugin file is non-empty and restart
   `opencode serve`.
 
+## Windows (beta)
+
+Download `KAGE_*_x64-setup.exe` (or the `.msi`) from
+[Releases](https://github.com/Sanket758/KAGE/releases) and run it. The plugin
+is the same single file — put `kage.js` in
+`%APPDATA%\opencode\plugins\` (or install it with
+`opencode plugin add github:Sanket758/KAGE`).
+
+Notes:
+
+- The companion uses WebView2 (auto-installed with Edge on up-to-date
+  Windows); no WebKitGTK is needed.
+- Transport on Windows is loopback TCP (`127.0.0.1`, ephemeral port published
+  in `%LOCALAPPDATA%\kage\kage.port`) with the same per-run token auth.
+- Beta caveats: the whole mascot rectangle captures the mouse on Windows (the
+  Linux build only captures the sprite), and the release has passed CI build +
+  headless smoke tests but has not been exercised on real desktops yet.
+
 ## Limitations
 
-- Linux x86_64 only today. Windows (named-pipe transport, MSI/NSIS) is on the
-  roadmap; the app cannot run inside Docker/containers — it needs your real
-  desktop session.
+- Linux x86_64 (stable) and Windows x64 (beta). The app cannot run inside
+  Docker/containers — it needs your real desktop session.
 - The overlay needs a compositor; headless/Xvfb setups will not show it.

@@ -13,9 +13,10 @@ const DEFAULT_LOOKUP: CompanionLookup = { env: process.env, exists: existsSync }
  * Locate the KAGE desktop companion without knowing how the user installed
  * it. First match wins:
  *   1. $KAGE_APP_PATH (explicit override)
- *   2. `kage` anywhere on PATH (deb / native installs)
- *   3. ~/.local/bin/KAGE.AppImage (install.sh default)
- *   4. /usr/local/bin/kage, /usr/bin/kage
+ *   2. `kage` anywhere on PATH (deb / native installs; kage.exe on Windows)
+ *   3. ~/.local/bin/KAGE.AppImage (Linux install.sh default)
+ *   4. %LOCALAPPDATA%\Programs\KAGE\kage.exe (Windows NSIS per-user install)
+ *   5. /usr/local/bin/kage, /usr/bin/kage (Linux system installs)
  * Returns null when nothing is installed; callers stay silent and keep
  * retrying on the normal bridge backoff.
  */
@@ -26,23 +27,30 @@ export function resolveCompanionCommand(
   if (override !== undefined && override !== "") {
     return lookup.exists(override) ? override : null;
   }
-  const onPath = findOnPath("kage", lookup);
+  const isWindows = lookup.env.OS === "Windows_NT" || lookup.env.SYSTEMROOT !== undefined;
+  const onPath = findOnPath(isWindows ? "kage.exe" : "kage", lookup);
   if (onPath) return onPath;
   const home = lookup.env.HOME ?? homedir();
-  const candidates = [
-    join(home, ".local", "bin", "KAGE.AppImage"),
-    "/usr/local/bin/kage",
-    "/usr/bin/kage",
-  ];
+  const localAppData = lookup.env.LOCALAPPDATA ?? join(home, "AppData", "Local");
+  const candidates = isWindows
+    ? [join(localAppData, "Programs", "KAGE", "kage.exe")]
+    : [
+        join(home, ".local", "bin", "KAGE.AppImage"),
+        "/usr/local/bin/kage",
+        "/usr/bin/kage",
+      ];
   return candidates.find((candidate) => lookup.exists(candidate)) ?? null;
 }
 
 function findOnPath(command: string, lookup: CompanionLookup): string | null {
   const pathVar = lookup.env.PATH ?? "";
-  for (const dir of pathVar.split(":")) {
+  const extensions = command.endsWith(".exe") ? [""] : ["", ".exe"];
+  for (const dir of pathVar.split(lookup.env.OS === "Windows_NT" ? ";" : ":")) {
     if (!dir) continue;
-    const candidate = join(dir, command);
-    if (lookup.exists(candidate)) return candidate;
+    for (const extension of extensions) {
+      const candidate = join(dir, command + extension);
+      if (lookup.exists(candidate)) return candidate;
+    }
   }
   return null;
 }

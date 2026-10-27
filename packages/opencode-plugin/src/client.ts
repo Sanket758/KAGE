@@ -128,7 +128,25 @@ export class BridgeClient {
       return;
     }
 
-    const socket = net.createConnection(this.paths.socketPath);
+    let socket: net.Socket;
+    if (this.paths.endpointKind === "tcp") {
+      // Windows: the companion publishes its ephemeral loopback port; read it
+      // fresh on every attempt because it changes between runs.
+      let port: number;
+      try {
+        port = Number.parseInt(readFileSync(this.paths.socketPath, "utf8").trim(), 10);
+      } catch {
+        port = Number.NaN;
+      }
+      if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+        this.#companionMissing();
+        this.#scheduleNext();
+        return;
+      }
+      socket = net.createConnection({ host: "127.0.0.1", port });
+    } else {
+      socket = net.createConnection(this.paths.socketPath);
+    }
     this.#socket = socket;
     socket.setNoDelay(true);
 

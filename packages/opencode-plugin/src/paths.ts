@@ -1,11 +1,16 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+export type EndpointKind = "unix" | "tcp";
+
 export interface BridgePaths {
-  /** Directory that owns the socket and token file. */
+  /** Directory that owns the socket/token files. */
   runtimeDir: string;
+  /** Unix: socket file path. Windows (tcp): path of the port file. */
   socketPath: string;
   tokenPath: string;
+  /** How to reach the companion. Defaults to "unix" for overridden/test paths. */
+  endpointKind?: EndpointKind;
 }
 
 /**
@@ -20,6 +25,20 @@ export function resolveBridgePaths(env: NodeJS.ProcessEnv = process.env): Bridge
       runtimeDir,
       socketPath: override,
       tokenPath: env.KAGE_TOKEN_PATH ?? join(runtimeDir, "token"),
+      endpointKind: "unix",
+    };
+  }
+
+  if (process.platform === "win32") {
+    // Loopback TCP: the companion binds 127.0.0.1 on an ephemeral port and
+    // publishes it in kage.port next to the token.
+    const base = env.LOCALAPPDATA ?? join(env.USERPROFILE ?? tmpdir(), "AppData", "Local");
+    const runtimeDir = join(base, "kage");
+    return {
+      runtimeDir,
+      socketPath: join(runtimeDir, "kage.port"),
+      tokenPath: join(runtimeDir, "token"),
+      endpointKind: "tcp",
     };
   }
 
@@ -31,5 +50,5 @@ export function resolveBridgePaths(env: NodeJS.ProcessEnv = process.env): Bridge
     join(runtimeDir, "kage.sock").length <= 100
       ? join(runtimeDir, "kage.sock")
       : join("/tmp", `kage-${uid}.sock`);
-  return { runtimeDir, socketPath, tokenPath: join(runtimeDir, "token") };
+  return { runtimeDir, socketPath, tokenPath: join(runtimeDir, "token"), endpointKind: "unix" };
 }

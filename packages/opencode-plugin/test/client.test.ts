@@ -21,9 +21,15 @@ interface Harness {
 function makePaths(): BridgePaths {
   const runtimeDir = mkdtempSync(join(tmpdir(), "kage-bridge-"));
   writeFileSync(join(runtimeDir, "token"), "unit-fake-token-0123456789\n", { mode: 0o600 });
+  // Named pipes give Node a path-style endpoint on Windows too, so the same
+  // socket-style tests run on every platform.
+  const socketPath =
+    process.platform === "win32"
+      ? `\\\\.\\pipe\\kage-test-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      : join(runtimeDir, "kage.sock");
   return {
     runtimeDir,
-    socketPath: join(runtimeDir, "kage.sock"),
+    socketPath,
     tokenPath: join(runtimeDir, "token"),
   };
 }
