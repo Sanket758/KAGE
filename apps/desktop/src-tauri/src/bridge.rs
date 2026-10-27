@@ -488,6 +488,7 @@ pub fn start(
 
     let thread = {
         let stop = Arc::clone(&stop);
+        #[cfg(unix)]
         let socket_path = paths.socket_path.clone();
         let events = Arc::clone(&events);
         let status_sink = Arc::clone(&status_sink);
