@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveCompanionCommand, type CompanionLookup } from "../src/companion.js";
 
@@ -58,21 +59,21 @@ describe("resolveCompanionCommand", () => {
   });
 
   it("uses the Windows NSIS per-user install path on win32", () => {
-    const exe = "C:\\Users\\u\\AppData\\Local\\Programs\\KAGE\\kage.exe";
+    // Build expectations with join() so they match the implementation's
+    // path semantics on any test platform.
+    const localAppData = "C:\\Users\\u\\AppData\\Local";
+    const exe = join(localAppData, "Programs", "KAGE", "kage.exe");
     const lookup = lookupFactory(
       new Set([exe]),
-      { PATH: "C:\\Windows\\System32", LOCALAPPDATA: "C:\\Users\\u\\AppData\\Local" },
+      { PATH: "C:\\Windows\\System32", LOCALAPPDATA: localAppData },
       "win32",
     );
     expect(resolveCompanionCommand(lookup)).toBe(exe);
   });
 
   it("finds kage.exe on a Windows PATH", () => {
-    const lookup = lookupFactory(
-      new Set(["C:\\Tools\\kage.exe"]),
-      { PATH: "C:\\Tools" },
-      "win32",
-    );
-    expect(resolveCompanionCommand(lookup)).toBe("C:\\Tools\\kage.exe");
+    const exe = join("C:\\Tools", "kage.exe");
+    const lookup = lookupFactory(new Set([exe]), { PATH: "C:\\Tools" }, "win32");
+    expect(resolveCompanionCommand(lookup)).toBe(exe);
   });
 });
