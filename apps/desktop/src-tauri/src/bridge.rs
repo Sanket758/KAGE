@@ -1,20 +1,26 @@
 //! Local-only bridge between the OpenCode plugin and the companion window.
 //!
 //! The plugin connects to a Unix domain socket in the user's runtime directory
-//! and authenticates with a random token that this process creates with mode
-//! 0600. Every frame is size limited, JSON validated and rate limited.
+//! (Linux) or to a loopback TCP port published in a file (Windows) and
+//! authenticates with a random token that this process creates. Every frame is
+//! size limited, JSON validated and rate limited.
 
 use serde_json::Value;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
-use std::os::unix::fs::PermissionsExt;
-use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
+use std::os::unix::net::{UnixListener, UnixStream};
+#[cfg(windows)]
+use std::net::{TcpListener, TcpStream};
 
 pub const PROTOCOL_VERSION: u64 = 1;
 pub const MAX_FRAME_BYTES: usize = 8192;
@@ -94,6 +100,8 @@ impl Default for StatusHandle {
 #[derive(Debug, Clone)]
 pub struct BridgePaths {
     pub runtime_dir: PathBuf,
+    /// Unix: the socket file path. Windows: the path of the port file that
+    /// publishes the loopback TCP port of the running companion.
     pub socket_path: PathBuf,
     pub token_path: PathBuf,
 }
@@ -116,19 +124,109 @@ pub fn resolve_bridge_paths() -> BridgePaths {
         };
     }
 
-    let uid = unsafe { libc::getuid() };
-    let base = env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
-    let runtime_dir = Path::new(&base).join("kage");
-    let default_socket = runtime_dir.join("kage.sock");
-    let socket_path = if default_socket.to_string_lossy().len() <= 100 {
-        default_socket
-    } else {
-        PathBuf::from(format!("/tmp/kage-{uid}.sock"))
-    };
-    BridgePaths {
-        runtime_dir,
-        socket_path,
-        token_path: Path::new(&base).join("kage").join("token"),
+    #[cfg(unix)]
+    {
+        let uid = unsafe { libc::getuid() };
+        let base = env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+        let runtime_dir = Path::new(&base).join("kage");
+        let default_socket = runtime_dir.join("kage.sock");
+        let socket_path = if default_socket.to_string_lossy().len() <= 100 {
+            default_socket
+        } else {
+            PathBuf::from(format!("/tmp/kage-{uid}.sock"))
+        };
+        BridgePaths {
+            runtime_dir,
+            socket_path,
+            token_path: Path::new(&base).join("kage").join("token"),
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        let base = env::var("LOCALAPPDATA").unwrap_or_else(|_| {
+            env::var("USERPROFILE").unwrap_or_else(|_| r"C:\Users\Public".to_string())
+        });
+        let runtime_dir = Path::new(&base).join("kage");
+        BridgePaths {
+            runtime_dir: runtime_dir.clone(),
+            socket_path: runtime_dir.join("kage.port"),
+            token_path: runtime_dir.join("token"),
+        }
+    }
+}
+
+/// Client connection type: Unix domain socket on Linux, loopback TCP on
+/// Windows. The TCP port is ephemeral (published in the port file) and every
+/// client must still authenticate with the per-run token, so the security
+/// model matches the socket's 0600 file permissions.
+#[cfg(unix)]
+pub type ClientStream = UnixStream;
+#[cfg(windows)]
+pub type ClientStream = TcpStream;
+
+/// Streams that can duplicate their handle; `handle_client` reads and writes
+/// concurrently and needs two handles to one connection.
+trait TryCloneStream: Read + Write + Send + 'static {
+    fn try_clone_stream(&self) -> io::Result<Self>
+    where
+        Self: Sized;
+}
+
+#[cfg(unix)]
+impl TryCloneStream for UnixStream {
+    fn try_clone_stream(&self) -> io::Result<Self> {
+        UnixStream::try_clone(self)
+    }
+}
+
+#[cfg(windows)]
+impl TryCloneStream for TcpStream {
+    fn try_clone_stream(&self) -> io::Result<Self> {
+        TcpStream::try_clone(self)
+    }
+}
+
+/// Listeners whose accept yields a client stream of the right platform type.
+trait ListenerLike {
+    type Stream: TryCloneStream;
+    fn accept_stream(&self) -> io::Result<Self::Stream>;
+}
+
+#[cfg(unix)]
+impl ListenerLike for UnixListener {
+    type Stream = UnixStream;
+    fn accept_stream(&self) -> io::Result<UnixStream> {
+        self.accept().map(|(stream, _)| stream)
+    }
+}
+
+#[cfg(windows)]
+impl ListenerLike for TcpListener {
+    type Stream = TcpStream;
+    fn accept_stream(&self) -> io::Result<TcpStream> {
+        self.accept().map(|(stream, _)| stream)
+    }
+}
+
+#[cfg(windows)]
+fn read_endpoint_port(paths: &BridgePaths) -> io::Result<u16> {
+    let text = fs::read_to_string(&paths.socket_path)?;
+    text.trim()
+        .parse::<u16>()
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid port file"))
+}
+
+/// Connects to the bridge endpoint of a running companion.
+fn connect_endpoint(paths: &BridgePaths) -> io::Result<ClientStream> {
+    #[cfg(unix)]
+    {
+        UnixStream::connect(&paths.socket_path)
+    }
+    #[cfg(windows)]
+    {
+        let port = read_endpoint_port(paths)?;
+        TcpStream::connect(("127.0.0.1", port))
     }
 }
 
@@ -251,7 +349,11 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 
 fn generate_token() -> io::Result<String> {
     let mut bytes = [0u8; 32];
+    #[cfg(unix)]
     fs::File::open("/dev/urandom")?.read_exact(&mut bytes)?;
+    #[cfg(windows)]
+    getrandom::getrandom(&mut bytes)
+        .map_err(|_| io::Error::new(io::ErrorKind::Other, "system RNG failed"))?;
     let mut token = String::with_capacity(64);
     for byte in bytes {
         token.push_str(&format!("{byte:02x}"));
@@ -261,18 +363,27 @@ fn generate_token() -> io::Result<String> {
 
 fn prepare(paths: &BridgePaths) -> io::Result<String> {
     fs::create_dir_all(&paths.runtime_dir)?;
-    let _ = fs::set_permissions(&paths.runtime_dir, fs::Permissions::from_mode(0o700));
+    #[cfg(unix)]
+    {
+        let _ = fs::set_permissions(&paths.runtime_dir, fs::Permissions::from_mode(0o700));
+        if let Some(parent) = paths.token_path.parent() {
+            fs::create_dir_all(parent)?;
+            let _ = fs::set_permissions(parent, fs::Permissions::from_mode(0o700));
+        }
+    }
+    #[cfg(windows)]
     if let Some(parent) = paths.token_path.parent() {
         fs::create_dir_all(parent)?;
-        let _ = fs::set_permissions(parent, fs::Permissions::from_mode(0o700));
     }
 
     let token = generate_token()?;
     let temporary = paths.token_path.with_extension("tmp");
     fs::write(&temporary, token.as_bytes())?;
+    #[cfg(unix)]
     fs::set_permissions(&temporary, fs::Permissions::from_mode(0o600))?;
     fs::rename(&temporary, &paths.token_path)?;
 
+    #[cfg(unix)]
     if paths.socket_path.exists() {
         let _ = fs::remove_file(&paths.socket_path);
     }
@@ -295,7 +406,7 @@ pub fn request_show(paths: &BridgePaths) -> bool {
     if token.len() < 16 || token.len() > 256 {
         return false;
     }
-    let mut stream = match UnixStream::connect(&paths.socket_path) {
+    let mut stream = match connect_endpoint(paths) {
         Ok(stream) => stream,
         Err(_) => return false,
     };
@@ -320,7 +431,7 @@ pub fn request_show(paths: &BridgePaths) -> bool {
 
 pub struct Bridge {
     stop: Arc<AtomicBool>,
-    socket_path: PathBuf,
+    paths: BridgePaths,
     thread: Option<JoinHandle<()>>,
 }
 
@@ -329,12 +440,13 @@ impl Bridge {
         if self.stop.swap(true, Ordering::SeqCst) {
             return;
         }
-        // Unblocks `incoming()` so the listener thread can observe the flag.
-        let _ = UnixStream::connect(&self.socket_path);
+        // Unblocks the accept loop so the listener thread can observe the flag.
+        let _ = connect_endpoint(&self.paths);
         if let Some(handle) = self.thread.take() {
             let _ = handle.join();
         }
-        let _ = fs::remove_file(&self.socket_path);
+        #[cfg(unix)]
+        let _ = fs::remove_file(&self.paths.socket_path);
     }
 }
 
@@ -352,8 +464,22 @@ pub fn start(
     status: StatusHandle,
 ) -> io::Result<Bridge> {
     let token = Arc::new(prepare(&paths)?);
-    let listener = UnixListener::bind(&paths.socket_path)?;
-    fs::set_permissions(&paths.socket_path, fs::Permissions::from_mode(0o600))?;
+
+    #[cfg(unix)]
+    let listener = {
+        let listener = UnixListener::bind(&paths.socket_path)?;
+        fs::set_permissions(&paths.socket_path, fs::Permissions::from_mode(0o600))?;
+        listener
+    };
+    #[cfg(windows)]
+    let listener = {
+        // Bind loopback only, on an ephemeral port, and publish it for the
+        // plugin; authentication still requires the per-run token file.
+        let listener = TcpListener::bind(("127.0.0.1", 0))?;
+        let port = listener.local_addr()?.port();
+        fs::write(&paths.socket_path, format!("{port}\n"))?;
+        listener
+    };
 
     let stop = Arc::new(AtomicBool::new(false));
     let clients = Arc::new(AtomicUsize::new(0));
@@ -372,8 +498,8 @@ pub fn start(
             .name("kage-bridge".to_string())
             .spawn(move || {
                 loop {
-                    match listener.accept() {
-                        Ok((stream, _)) => {
+                    match listener.accept_stream() {
+                        Ok(stream) => {
                             if stop.load(Ordering::SeqCst) {
                                 break;
                             }
@@ -413,19 +539,20 @@ pub fn start(
                         }
                     }
                 }
+                #[cfg(unix)]
                 let _ = fs::remove_file(&socket_path);
             })?
     };
 
     Ok(Bridge {
         stop,
-        socket_path: paths.socket_path,
+        paths,
         thread: Some(thread),
     })
 }
 
-fn handle_client(
-    mut stream: UnixStream,
+fn handle_client<S: TryCloneStream>(
+    mut stream: S,
     token: &str,
     events: &EventSink,
     status: &StatusHandle,
@@ -433,7 +560,7 @@ fn handle_client(
     show_sink: &ShowSink,
     clients: &AtomicUsize,
 ) -> io::Result<()> {
-    let read_stream = stream.try_clone()?;
+    let read_stream = stream.try_clone_stream()?;
     let mut reader = BufReader::new(read_stream);
 
     let first = match read_frame(&mut reader)? {
@@ -602,8 +729,8 @@ mod tests {
         let token = fs::read_to_string(&paths.token_path).unwrap();
         assert_eq!(token.len(), 64);
 
-        let stream = UnixStream::connect(&paths.socket_path).unwrap();
-        let mut writer = stream.try_clone().unwrap();
+        let stream = connect_endpoint(&paths).unwrap();
+        let mut writer = stream.try_clone_stream().unwrap();
         let mut reader = BufReader::new(stream);
         let hello = format!(
             "{{\"type\":\"hello\",\"version\":1,\"token\":\"{token}\"}}\n"
@@ -666,8 +793,8 @@ mod tests {
         let mut bridge =
             start(paths.clone(), events, status_sink, show_sink, status.clone()).unwrap();
 
-        let stream = UnixStream::connect(&paths.socket_path).unwrap();
-        let mut writer = stream.try_clone().unwrap();
+        let stream = connect_endpoint(&paths).unwrap();
+        let mut writer = stream.try_clone_stream().unwrap();
         let mut reader = BufReader::new(stream);
         writer
             .write_all(b"{\"type\":\"hello\",\"version\":1,\"token\":\"wrong-token-wrong-token\"}\n")

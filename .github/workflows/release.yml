@@ -32,7 +32,7 @@ jobs:
           npm test
           npm run build:plugin
       - name: Build Tauri release bundles
-        run: cd apps/desktop && npm run tauri:build
+        run: cd apps/desktop && npm run tauri:build -- --bundles deb,appimage
       - name: Collect artifacts
         run: |
           mkdir -p dist
@@ -40,6 +40,53 @@ jobs:
           cp apps/desktop/src-tauri/target/release/bundle/deb/KAGE_*_amd64.deb dist/
           cp packages/opencode-plugin/dist/index.js dist/kage.js
           cp scripts/install.sh dist/install.sh
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - name: Test
+        run: |
+          npm ci
+          npm test
+          cargo test --release --manifest-path apps/desktop/src-tauri/Cargo.toml
+      - name: Build Tauri release bundles
+        run: cd apps/desktop && npm run tauri:build -- --bundles msi,nsis
+      - name: Headless smoke test
+        shell: pwsh
+        run: |
+          $proc = Start-Process -FilePath "apps/desktop/src-tauri/target/release/kage.exe" -PassThru
+          Start-Sleep -Seconds 12
+          $alive = -not $proc.HasExited
+          $portFile = "$env:LOCALAPPDATA/kage/kage.port"
+          Write-Output "alive=$alive portFile=$(Test-Path $portFile)"
+          if ($alive) {
+            Stop-Process -Id $proc.Id -Force
+            if (-not (Test-Path $portFile)) { Write-Error "companion is running but published no port" }
+          } else {
+            Write-Error "companion exited during smoke test"
+          }
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item apps/desktop/src-tauri/target/release/bundle/msi/*.msi dist/
+          Copy-Item apps/desktop/src-tauri/target/release/bundle/nsis/*.exe dist/
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
