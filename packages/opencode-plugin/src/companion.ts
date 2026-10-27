@@ -5,9 +5,15 @@ import { join } from "node:path";
 export interface CompanionLookup {
   env: NodeJS.ProcessEnv;
   exists: (path: string) => boolean;
+  /** Defaults to process.platform; tests pin it explicitly. */
+  platform?: NodeJS.Platform;
 }
 
-const DEFAULT_LOOKUP: CompanionLookup = { env: process.env, exists: existsSync };
+const DEFAULT_LOOKUP: CompanionLookup = {
+  env: process.env,
+  exists: existsSync,
+  platform: process.platform,
+};
 
 /**
  * Locate the KAGE desktop companion without knowing how the user installed
@@ -27,8 +33,8 @@ export function resolveCompanionCommand(
   if (override !== undefined && override !== "") {
     return lookup.exists(override) ? override : null;
   }
-  const isWindows = lookup.env.OS === "Windows_NT" || lookup.env.SYSTEMROOT !== undefined;
-  const onPath = findOnPath(isWindows ? "kage.exe" : "kage", lookup);
+  const isWindows = (lookup.platform ?? process.platform) === "win32";
+  const onPath = findOnPath(isWindows ? "kage.exe" : "kage", lookup, isWindows);
   if (onPath) return onPath;
   const home = lookup.env.HOME ?? homedir();
   const localAppData = lookup.env.LOCALAPPDATA ?? join(home, "AppData", "Local");
@@ -42,10 +48,15 @@ export function resolveCompanionCommand(
   return candidates.find((candidate) => lookup.exists(candidate)) ?? null;
 }
 
-function findOnPath(command: string, lookup: CompanionLookup): string | null {
+function findOnPath(
+  command: string,
+  lookup: CompanionLookup,
+  isWindows: boolean,
+): string | null {
   const pathVar = lookup.env.PATH ?? "";
-  const extensions = command.endsWith(".exe") ? [""] : ["", ".exe"];
-  for (const dir of pathVar.split(lookup.env.OS === "Windows_NT" ? ";" : ":")) {
+  const separator = isWindows ? ";" : ":";
+  const extensions = isWindows ? ["", ".exe"] : [""];
+  for (const dir of pathVar.split(separator)) {
     if (!dir) continue;
     for (const extension of extensions) {
       const candidate = join(dir, command + extension);

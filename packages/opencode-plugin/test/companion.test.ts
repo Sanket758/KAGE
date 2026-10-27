@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { resolveCompanionCommand, type CompanionLookup } from "../src/companion.js";
 
-function lookupFactory(existing: Set<string>, env: NodeJS.ProcessEnv = {}): CompanionLookup {
-  return { env, exists: (path) => existing.has(path) };
+function lookupFactory(
+  existing: Set<string>,
+  env: NodeJS.ProcessEnv = {},
+  platform: NodeJS.Platform = "linux",
+): CompanionLookup {
+  return { env, exists: (path) => existing.has(path), platform };
 }
 
 describe("resolveCompanionCommand", () => {
@@ -51,5 +55,24 @@ describe("resolveCompanionCommand", () => {
       HOME: "/home/u",
     });
     expect(resolveCompanionCommand(lookup)).toBe("/usr/bin/kage");
+  });
+
+  it("uses the Windows NSIS per-user install path on win32", () => {
+    const exe = "C:\\Users\\u\\AppData\\Local\\Programs\\KAGE\\kage.exe";
+    const lookup = lookupFactory(
+      new Set([exe]),
+      { PATH: "C:\\Windows\\System32", LOCALAPPDATA: "C:\\Users\\u\\AppData\\Local" },
+      "win32",
+    );
+    expect(resolveCompanionCommand(lookup)).toBe(exe);
+  });
+
+  it("finds kage.exe on a Windows PATH", () => {
+    const lookup = lookupFactory(
+      new Set(["C:\\Tools\\kage.exe"]),
+      { PATH: "C:\\Tools" },
+      "win32",
+    );
+    expect(resolveCompanionCommand(lookup)).toBe("C:\\Tools\\kage.exe");
   });
 });
