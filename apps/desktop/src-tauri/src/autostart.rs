@@ -1,6 +1,7 @@
 use crate::settings;
 use std::env;
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 

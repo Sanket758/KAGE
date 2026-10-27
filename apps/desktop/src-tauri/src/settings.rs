@@ -18,7 +18,10 @@ pub fn config_home() -> PathBuf {
     if let Some(dir) = env::var_os("LOCALAPPDATA") {
         return PathBuf::from(dir);
     }
-    PathBuf::from("/tmp").join(format!("kage-{}", unsafe { libc::getuid() }))
+    #[cfg(not(windows))]
+    return PathBuf::from("/tmp").join(format!("kage-{}", unsafe { libc::getuid() }));
+    #[cfg(windows)]
+    return PathBuf::from(r"C:\Users\Public");
 }
 
 pub fn settings_path() -> PathBuf {
