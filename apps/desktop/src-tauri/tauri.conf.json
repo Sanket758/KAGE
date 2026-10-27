@@ -46,6 +46,7 @@
     "shortDescription": "A little spirit. A lot of signal.",
     "longDescription": "KAGE is a local-first pixel-art companion that reflects real OpenCode activity.",
     "icon": [
+      "icons/icon.ico",
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
