@@ -47,8 +47,12 @@ const FILE_EDIT_THROTTLE_MS = 250;
 function spawnCompanion(): void {
   const command = resolveCompanionCommand();
   if (!command) return;
+  const args = ["--managed"];
+  if (process.env.KAGE_DEBUG_LOG === "1" || process.env.KAGE_DEBUG_LOG === "true") {
+    args.push("--debug-log");
+  }
   // `--managed` makes the companion exit when the last OpenCode client disconnects.
-  spawn(command, ["--managed"], { detached: true, stdio: "ignore", env: process.env }).unref();
+  spawn(command, args, { detached: true, stdio: "ignore", env: process.env }).unref();
 }
 
 /**

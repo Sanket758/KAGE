@@ -117,8 +117,8 @@ Debian package + AppImage:
 ```bash
 cd apps/desktop
 npm run tauri:build -- --bundles deb,appimage
-# → target/release/bundle/deb/KAGE_0.3.4_amd64.deb
-# → target/release/bundle/appimage/KAGE_0.3.4_amd64.AppImage
+# → target/release/bundle/deb/KAGE_0.3.6_amd64.deb
+# → target/release/bundle/appimage/KAGE_0.3.6_amd64.AppImage
 ```
 
 The packages depend on `libwebkit2gtk-4.1-0` and `libgtk-3-0`.

@@ -52,6 +52,26 @@ describe("resolveCompanionCommand", () => {
     expect(resolveCompanionCommand(lookup)).toBeNull();
   });
 
+  it("finds the NSIS per-user install on Windows", () => {
+    const appdata = "C:\\Users\\u\\AppData\\Local";
+    const exe = appdata + "/KAGE/kage.exe";
+    const lookup = lookupFactory(new Set([exe]), {
+      LOCALAPPDATA: appdata,
+      USERPROFILE: "C:\\Users\\u",
+    }, "win32");
+    expect(resolveCompanionCommand(lookup)).toBe(exe);
+  });
+
+  it("falls back to Program Files on Windows", () => {
+    const exe = "C:/Program Files/KAGE/kage.exe";
+    const lookup = lookupFactory(new Set([exe]), {
+      LOCALAPPDATA: "C:\\Users\\u\\AppData\\Local",
+      USERPROFILE: "C:\\Users\\u",
+      "ProgramFiles": "C:/Program Files",
+    }, "win32");
+    expect(resolveCompanionCommand(lookup)).toBe(exe);
+  });
+
   it("skips empty PATH entries safely", () => {
     const lookup = lookupFactory(new Set(["/usr/bin/kage"]), {
       PATH: "::/usr/bin:",

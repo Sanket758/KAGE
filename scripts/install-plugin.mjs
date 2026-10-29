@@ -10,13 +10,19 @@
 import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = new Set(process.argv.slice(2));
 const project = args.has("--project");
 const uninstall = args.has("--uninstall");
 
-const configHome = process.env.XDG_CONFIG_HOME || join(process.env.HOME ?? "", ".config");
+import { homedir } from "node:os";
+// OpenCode uses ~/.config/opencode on every platform, including Windows.
+const configHome =
+  process.env.XDG_CONFIG_HOME ||
+  process.env.OPENCODE_CONFIG_DIR ||
+  join(process.env.HOME || homedir(), ".config");
 const directory = project
   ? resolve(process.cwd(), ".opencode/plugins")
   : join(configHome, "opencode/plugins");

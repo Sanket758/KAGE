@@ -1687,7 +1687,7 @@ dependencies = [
 
 [[package]]
 name = "kage"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "cairo-rs",
  "getrandom 0.2.17",

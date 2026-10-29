@@ -101,7 +101,8 @@ KAGE does not install services or modify shell configuration.
 
 ## Debug logging (Windows and Linux)
 
-If something isn't working, run the companion with `--debug-log`:
+If something isn't working, run the companion with `--debug-log`, or set
+`KAGE_DEBUG_LOG=1` in the environment so OpenCode-launched instances also log:
 
 ```bash
 # Windows (PowerShell)

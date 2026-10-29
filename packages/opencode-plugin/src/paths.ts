@@ -17,19 +17,24 @@ export interface BridgePaths {
  * The desktop app and the plugin must agree on these paths.
  * Mirrors `resolve_bridge_paths` in the Tauri shell.
  */
-export function resolveBridgePaths(env: NodeJS.ProcessEnv = process.env): BridgePaths {
+export function resolveBridgePaths(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): BridgePaths {
   const override = env.KAGE_SOCKET_PATH;
   if (override) {
-    const runtimeDir = override.slice(0, Math.max(0, override.lastIndexOf("/"))) || "/tmp";
+    const lastSlash = Math.max(override.lastIndexOf("/"), override.lastIndexOf("\\"));
+    const runtimeDir = lastSlash >= 0 ? override.slice(0, lastSlash) : "/tmp";
+    const isWindows = platform === "win32";
     return {
       runtimeDir,
       socketPath: override,
       tokenPath: env.KAGE_TOKEN_PATH ?? join(runtimeDir, "token"),
-      endpointKind: "unix",
+      endpointKind: isWindows ? "tcp" : "unix",
     };
   }
 
-  if (process.platform === "win32") {
+  if (platform === "win32") {
     // Loopback TCP: the companion binds 127.0.0.1 on an ephemeral port and
     // publishes it in kage.port next to the token.
     const base = env.LOCALAPPDATA ?? join(env.USERPROFILE ?? tmpdir(), "AppData", "Local");

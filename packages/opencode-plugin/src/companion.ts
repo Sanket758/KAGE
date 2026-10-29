@@ -39,7 +39,12 @@ export function resolveCompanionCommand(
   const home = lookup.env.HOME ?? homedir();
   const localAppData = lookup.env.LOCALAPPDATA ?? join(home, "AppData", "Local");
   const candidates = isWindows
-    ? [join(localAppData, "Programs", "KAGE", "kage.exe")]
+    ? [
+        join(localAppData, "KAGE", "kage.exe"),
+        join(localAppData, "Programs", "KAGE", "kage.exe"),
+        join(lookup.env["ProgramFiles"] ?? "C:\\Program Files", "KAGE", "kage.exe"),
+        join(lookup.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)", "KAGE", "kage.exe"),
+      ]
     : [
         join(home, ".local", "bin", "KAGE.AppImage"),
         "/usr/local/bin/kage",

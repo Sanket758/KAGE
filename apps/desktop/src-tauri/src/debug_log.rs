@@ -8,7 +8,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 static STATE: Mutex<Option<FileState>> = Mutex::new(None);
+static VERBOSE: AtomicBool = AtomicBool::new(false);
 
 struct FileState {
     file: fs::File,
@@ -16,22 +19,42 @@ struct FileState {
 }
 
 pub fn init(enabled: bool) {
-    if !enabled {
-        return;
-    }
+    VERBOSE.store(enabled, Ordering::Relaxed);
+
     let path = log_path();
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    if let Ok(file) = OpenOptions::new().create(true).append(true).open(&path) {
-        let mut state = STATE.lock().expect("debug log mutex");
-        *state = Some(FileState { file, path });
-        log("debug logging enabled");
+
+    // Open with explicit write+append. Try the preferred path, then the temp dir.
+    let mut opened = OpenOptions::new().create(true).write(true).append(true).open(&path);
+    if opened.is_err() {
+        let fallback = std::env::temp_dir().join("kage-debug.log");
+        if let Some(parent) = fallback.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        opened = OpenOptions::new().create(true).write(true).append(true).open(&fallback);
+    }
+
+    if let Ok(file) = opened {
+        let final_path = if path.exists() { path } else { std::env::temp_dir().join("kage-debug.log") };
+        // Drop the guard before logging: `log()` locks the same mutex and
+        // std::sync::Mutex is not reentrant.
+        {
+            let mut state = STATE.lock().expect("debug log mutex");
+            *state = Some(FileState { file, path: final_path });
+        }
+        let mode = if enabled { "verbose" } else { "minimal" };
+        log(&format!("debug log opened ({})", mode));
     }
 }
 
 pub fn is_enabled() -> bool {
     STATE.lock().expect("debug log mutex").is_some()
+}
+
+pub fn is_verbose() -> bool {
+    VERBOSE.load(Ordering::Relaxed)
 }
 
 pub fn path() -> Option<PathBuf> {
@@ -65,6 +88,23 @@ fn log_path() -> PathBuf {
         }
     }
     std::env::temp_dir().join("kage-debug.log")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn opens_and_writes_a_line() {
+        init(true);
+        assert!(path().is_some());
+        log("hello from test");
+        let p = path().unwrap();
+        let contents = fs::read_to_string(&p).unwrap();
+        assert!(!contents.is_empty());
+        assert!(contents.contains("hello from test"));
+    }
 }
 
 // Avoid pulling in chrono: format a coarse UTC-ish timestamp from SystemTime.

@@ -128,7 +128,7 @@ pub fn resolve_bridge_paths() -> BridgePaths {
     #[cfg(unix)]
     {
         let uid = unsafe { libc::getuid() };
-        let base = env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+        let base = env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().to_string());
         let runtime_dir = Path::new(&base).join("kage");
         let default_socket = runtime_dir.join("kage.sock");
         let socket_path = if default_socket.to_string_lossy().len() <= 100 {
@@ -146,7 +146,9 @@ pub fn resolve_bridge_paths() -> BridgePaths {
     #[cfg(windows)]
     {
         let base = env::var("LOCALAPPDATA").unwrap_or_else(|_| {
-            env::var("USERPROFILE").unwrap_or_else(|_| r"C:\Users\Public".to_string())
+            env::var("USERPROFILE")
+                .map(|home| format!(r"{}\AppData\Local", home))
+                .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().to_string())
         });
         let runtime_dir = Path::new(&base).join("kage");
         BridgePaths {
@@ -595,10 +597,7 @@ fn handle_client<S: TryCloneStream>(
     // its welcome must observe Connected status deterministically (the
     // Windows scheduler exposed this ordering race).
     let already_connected = clients.fetch_add(1, Ordering::SeqCst);
-    debug_log::log(&format!(
-        "client connected (total={})",
-        already_connected + 1
-    ));
+    debug_log::log(&format!("client connected (total={})", already_connected + 1));
     if already_connected == 0 && status.set(BridgeStatus::Connected) {
         status_sink(BridgeStatus::Connected);
     }
