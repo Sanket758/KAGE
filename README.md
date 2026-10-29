@@ -29,52 +29,101 @@ finishing — with its own animation language instead of another dashboard.
 
 ## Requirements
 
-- Linux desktop (tested on Pop!_OS / GNOME; other compositors may affect transparency).
-- [OpenCode](https://opencode.ai) installed.
-- To build: Node.js 20+, Rust 1.77+, and the Tauri 2 Linux dependencies
-  (WebKitGTK 4.1, GTK 3).
+- **Linux** desktop (primary; tested on Pop!_OS / GNOME; other compositors may
+  affect transparency). **Windows** is supported as a beta (MSI/NSIS installer).
+- [OpenCode](https://opencode.ai) installed and working (`opencode --version`).
+- To build from source: Node.js 20+, Rust 1.77+, and the Tauri 2 Linux
+  dependencies (WebKitGTK 4.1, GTK 3). Windows builds need the Rust MSVC
+  toolchain.
 
 ## Install (end users)
 
-No toolchain needed — grab a release:
+No toolchain needed — grab a release. Three equivalent routes:
+
+**1. One-liner (Linux, recommended)**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Sanket758/KAGE/main/scripts/install.sh | bash
 ```
 
-Details, the .deb route, and troubleshooting live in [INSTALL.md](INSTALL.md).
+Downloads the latest AppImage to `~/.local/bin/KAGE.AppImage`, installs the
+OpenCode plugin, and removes any legacy login-autostart entry from older
+versions. Restart OpenCode afterwards.
+
+**2. Debian / Ubuntu / Pop!_OS (.deb)**
+
+Download `KAGE_*_amd64.deb` from the
+[Releases](https://github.com/Sanket758/KAGE/releases) page, then:
+
+```bash
+sudo apt install ./KAGE_*_amd64.deb
+```
+
+The deb installs the `kage` binary (and its system libraries) but **not** the
+OpenCode plugin — grab `kage.js` from the same release and drop it in
+`~/.config/opencode/plugins/` (or run the one-liner above, which only installs
+the plugin if the binary is already present). Restart OpenCode afterwards.
+
+**3. Windows (beta)**
+
+Download `KAGE_*_x64-setup.exe` (or the `.msi`) from
+[Releases](https://github.com/Sanket758/KAGE/releases) and run it. Put
+`kage.js` in `%APPDATA%\opencode\plugins\` (or `opencode plugin add
+github:Sanket758/KAGE`).
+
+### Run
+
+KAGE does **not** start at login. The OpenCode plugin launches it the moment a
+session starts, and a managed instance exits about 10 seconds after OpenCode
+stops. There is only ever one window, even with many sessions.
+
+- Start OpenCode (`opencode` or `opencode serve`) — the mascot appears.
+- Drag it by grabbing the sprite; right-click for the menu (skins, quit).
+- Settings live in `~/.config/kage/settings.json` and persist locally.
+- To quit manually: right-click → Quit, or `pkill -x kage`.
+
+### Uninstall
+
+```bash
+bash install.sh --uninstall          # removes app, plugin, legacy autostart entry
+# or, for the .deb:
+sudo apt remove kage
+```
+
+Troubleshooting: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
 The rest of this README is for building from source.
 
-## Run the companion
+## Build from source
 
 ```bash
 npm install
-npm run dev            # starts Vite + the Tauri window
+npm run dev            # starts Vite + the Tauri window (dev mode)
 ```
 
-Build a release binary:
+Release binary:
 
 ```bash
 npm run build --workspace @kage/desktop   # frontend
 cd apps/desktop/src-tauri && cargo build --release
+# binary: apps/desktop/src-tauri/target/release/kage
 ```
 
-Or build a Debian package:
+Debian package + AppImage:
 
 ```bash
-cd apps/desktop/src-tauri
-npx tauri build --bundles deb     # → target/release/bundle/deb/KAGE_0.1.0_amd64.deb
-sudo dpkg -i target/release/bundle/deb/KAGE_0.1.0_amd64.deb
+cd apps/desktop
+npm run tauri:build -- --bundles deb,appimage
+# → target/release/bundle/deb/KAGE_0.3.2_amd64.deb
+# → target/release/bundle/appimage/KAGE_0.3.2_amd64.AppImage
 ```
 
-The package depends on `libwebkit2gtk-4.1-0` and `libgtk-3-0`. No AppImage is
-produced by default.
+The packages depend on `libwebkit2gtk-4.1-0` and `libgtk-3-0`.
 
 The KAGE window is frameless, transparent where the compositor supports it, and
-always on top. Drag it by the three dots above its head. Click the creature to
-inspect status.
+always on top. Click the creature to inspect status.
 
-## Install the OpenCode plugin
+## Install the OpenCode plugin (from source)
 
 ```bash
 npm run build:plugin
