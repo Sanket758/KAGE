@@ -81,6 +81,8 @@ stops. There is only ever one window, even with many sessions.
 - Drag it by grabbing the sprite; right-click for the menu (skins, quit).
 - Settings live in `~/.config/kage/settings.json` and persist locally.
 - To quit manually: right-click → Quit, or `pkill -x kage`.
+- Launching the binary directly (without OpenCode) keeps it open for about 60
+  seconds unless a client connects; pass `--manual` to keep it open.
 
 ### Uninstall
 
@@ -114,8 +116,8 @@ Debian package + AppImage:
 ```bash
 cd apps/desktop
 npm run tauri:build -- --bundles deb,appimage
-# → target/release/bundle/deb/KAGE_0.3.2_amd64.deb
-# → target/release/bundle/appimage/KAGE_0.3.2_amd64.AppImage
+# → target/release/bundle/deb/KAGE_0.3.3_amd64.deb
+# → target/release/bundle/appimage/KAGE_0.3.3_amd64.AppImage
 ```
 
 The packages depend on `libwebkit2gtk-4.1-0` and `libgtk-3-0`.

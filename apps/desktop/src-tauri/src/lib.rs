@@ -60,6 +60,10 @@ fn apply_move_mode(app: &tauri::AppHandle, enabled: bool) -> bool {
     let Some(window) = app.get_webview_window("main") else {
         return false;
     };
+    // On Linux the window is click-through outside the sprite, so move mode
+    // makes the whole rectangle interactive. On Windows the window is already
+    // interactive, so move mode only drives the visual hint.
+    #[cfg(target_os = "linux")]
     if enabled {
         let _ = window.set_focusable(true);
         let _ = window.set_ignore_cursor_events(false);
@@ -67,6 +71,13 @@ fn apply_move_mode(app: &tauri::AppHandle, enabled: bool) -> bool {
     } else {
         let _ = window.set_focusable(false);
         sprite_input_shape(&window);
+    }
+    #[cfg(not(target_os = "linux"))]
+    if enabled {
+        let _ = window.set_focusable(true);
+        let _ = window.set_focus();
+    } else {
+        let _ = window.set_focusable(false);
     }
     let _ = app.emit("kage://move-mode", enabled);
     enabled
@@ -259,7 +270,18 @@ pub fn run() {
             None
         }
     };
-    let managed = std::env::args().any(|argument| argument == "--managed");
+    let manual = std::env::args().any(|argument| argument == "--manual");
+    // Release builds are managed by default: an instance launched without
+    // OpenCode (e.g. by the installer's finish page) exits on its own instead
+    // of staying on screen forever. Debug builds keep the old behaviour so
+    // `tauri dev` is usable, and `--manual` always keeps the window open.
+    let managed = if manual {
+        false
+    } else if cfg!(debug_assertions) {
+        std::env::args().any(|argument| argument == "--managed")
+    } else {
+        true
+    };
 
     let builder = tauri::Builder::default()
         .manage(AppState {
@@ -346,10 +368,15 @@ pub fn run() {
                 // The GdkWindow only exists once the window is realized by
                 // show(); tao unwraps it when applying the input shape, so
                 // this must come after show(), never before.
-                let _ = window.set_ignore_cursor_events(true);
-                // Then narrow the input region to the sprite itself so the
-                // mascot is directly grabbable and the rest stays click-through.
-                sprite_input_shape(&window);
+                // On Linux the transparent area is click-through and only the
+                // sprite is grabbable. On Windows (no region shaping yet) keep
+                // the whole window interactive so the mascot can be moved and
+                // its context menu used.
+                #[cfg(target_os = "linux")]
+                {
+                    let _ = window.set_ignore_cursor_events(true);
+                    sprite_input_shape(&window);
+                }
             }
 
             // Ctrl+Alt+M toggles move mode so the mascot can be repositioned.
