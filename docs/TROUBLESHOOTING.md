@@ -98,3 +98,19 @@ launch only asks the running instance to show its window and exits.
    `rm -f ~/.config/autostart/kage.desktop`.
 
 KAGE does not install services or modify shell configuration.
+
+## Debug logging (Windows and Linux)
+
+If something isn't working, run the companion with `--debug-log`:
+
+```bash
+# Windows (PowerShell)
+& "$env:LOCALAPPDATA\Programs\KAGE\kage.exe" --debug-log
+# Linux
+~/.local/bin/KAGE.AppImage --debug-log
+```
+
+It writes timestamped lines to `%TEMP%\\kage-debug.log` (Windows) or
+`$XDG_RUNTIME_DIR/kage/kage-debug.log` (Linux). Share that file when reporting
+an issue. The log records startup, resolved paths, lock acquisition, bridge
+start, client connect/disconnect counts, and the managed-exit reason.

@@ -53,8 +53,9 @@ sudo apt install ./KAGE_*_amd64.deb
 
 The deb installs the `kage` binary, but **not** the OpenCode plugin — still grab
 `kage.js` from the release and put it in
-`~/.config/opencode/plugins/`. The plugin is what starts the companion, so the
-binary alone will not appear on screen.
+`~/.config/opencode/plugins/` (on Windows: `%USERPROFILE%\\.config\\opencode\\plugins\\`).
+The plugin is what starts the companion, so the binary alone will not appear
+on screen.
 
 ## Plugin-only install (already have the companion?)
 

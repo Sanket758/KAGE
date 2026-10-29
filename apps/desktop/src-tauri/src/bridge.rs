@@ -5,6 +5,7 @@
 //! authenticates with a random token that this process creates. Every frame is
 //! size limited, JSON validated and rate limited.
 
+use crate::debug_log;
 use serde_json::Value;
 use std::env;
 use std::fs;
@@ -584,6 +585,7 @@ fn handle_client<S: TryCloneStream>(
         _ => false,
     };
     if !authorized {
+        debug_log::log("client rejected: unauthorized");
         let _ = stream.write_all(b"{\"type\":\"error\",\"reason\":\"unauthorized\"}\n");
         let _ = stream.flush();
         return Ok(());
@@ -593,6 +595,10 @@ fn handle_client<S: TryCloneStream>(
     // its welcome must observe Connected status deterministically (the
     // Windows scheduler exposed this ordering race).
     let already_connected = clients.fetch_add(1, Ordering::SeqCst);
+    debug_log::log(&format!(
+        "client connected (total={})",
+        already_connected + 1
+    ));
     if already_connected == 0 && status.set(BridgeStatus::Connected) {
         status_sink(BridgeStatus::Connected);
     }
@@ -640,6 +646,7 @@ fn handle_client<S: TryCloneStream>(
     }
 
     let remaining = clients.fetch_sub(1, Ordering::SeqCst).saturating_sub(1);
+    debug_log::log(&format!("client disconnected (remaining={})", remaining));
     if remaining == 0 && status.set(BridgeStatus::Disconnected) {
         status_sink(BridgeStatus::Disconnected);
     }

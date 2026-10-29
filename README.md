@@ -68,8 +68,9 @@ the plugin if the binary is already present). Restart OpenCode afterwards.
 
 Download `KAGE_*_x64-setup.exe` (or the `.msi`) from
 [Releases](https://github.com/Sanket758/KAGE/releases) and run it. Put
-`kage.js` in `%APPDATA%\opencode\plugins\` (or `opencode plugin add
-github:Sanket758/KAGE`).
+`kage.js` in `%USERPROFILE%\.config\opencode\plugins\` (or `opencode plugin add
+github:Sanket758/KAGE`). OpenCode on Windows uses the same `.config` layout as
+Linux/macOS, not `%APPDATA%`.
 
 ### Run
 
@@ -116,8 +117,8 @@ Debian package + AppImage:
 ```bash
 cd apps/desktop
 npm run tauri:build -- --bundles deb,appimage
-# → target/release/bundle/deb/KAGE_0.3.3_amd64.deb
-# → target/release/bundle/appimage/KAGE_0.3.3_amd64.AppImage
+# → target/release/bundle/deb/KAGE_0.3.4_amd64.deb
+# → target/release/bundle/appimage/KAGE_0.3.4_amd64.AppImage
 ```
 
 The packages depend on `libwebkit2gtk-4.1-0` and `libgtk-3-0`.

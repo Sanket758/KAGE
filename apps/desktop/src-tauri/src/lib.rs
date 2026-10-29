@@ -1,5 +1,6 @@
 mod autostart;
 mod bridge;
+mod debug_log;
 mod instance;
 mod settings;
 
@@ -234,6 +235,7 @@ fn watch_managed_lifecycle(app: tauri::AppHandle, clients: Arc<AtomicUsize>) {
                         Duration::from_secs(60)
                     };
                     if idle_since.elapsed() >= grace {
+                        debug_log::log("managed exit: no clients for grace period");
                         app.exit(0);
                         return;
                     }
@@ -244,18 +246,33 @@ fn watch_managed_lifecycle(app: tauri::AppHandle, clients: Arc<AtomicUsize>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let debug_log_enabled = std::env::args().any(|argument| argument == "--debug-log");
+    debug_log::init(debug_log_enabled);
+    debug_log::log(&format!("startup args: {:?}", std::env::args().collect::<Vec<_>>()));
+
     let paths = bridge::resolve_bridge_paths();
+    debug_log::log(&format!(
+        "resolved paths: runtime_dir={} socket={} token={}",
+        paths.runtime_dir.display(),
+        paths.socket_path.display(),
+        paths.token_path.display()
+    ));
     autostart::remove_legacy_autostart();
+    debug_log::log("legacy autostart cleanup done");
 
     // One companion per user. The guard lives until the process exits, so a
     // second launch can never create a second window even when several
     // OpenCode sessions start at once.
     let _instance = match instance::acquire(&paths.runtime_dir) {
-        Ok(Some(guard)) => Some(guard),
+        Ok(Some(guard)) => {
+            debug_log::log("single-instance lock acquired");
+            Some(guard)
+        }
         Ok(None) => {
-            // The running instance may still be bringing its bridge up.
+            debug_log::log("single-instance lock held by another process; requesting show");
             for _ in 0..10 {
                 if bridge::request_show(&paths) {
+                    debug_log::log("show request succeeded; exiting");
                     break;
                 }
                 std::thread::sleep(Duration::from_millis(300));
@@ -263,6 +280,7 @@ pub fn run() {
             return;
         }
         Err(error) => {
+            debug_log::log(&format!("could not acquire lock: {error}"));
             eprintln!("kage: could not acquire the single-instance lock: {error}");
             if bridge::request_show(&paths) {
                 return;
@@ -335,6 +353,7 @@ pub fn run() {
 
             match bridge::start(paths, events, status_sink, show_sink, status_handle) {
                 Ok(bridge) => {
+                    debug_log::log("bridge started");
                     let clients = bridge.clients();
                     *app
                         .state::<AppState>()
@@ -342,10 +361,14 @@ pub fn run() {
                         .lock()
                         .expect("bridge mutex poisoned") = Some(bridge);
                     if managed {
+                        debug_log::log("managed mode: watching client count");
                         watch_managed_lifecycle(handle.clone(), clients);
+                    } else {
+                        debug_log::log("manual mode: not watching client count");
                     }
                 }
                 Err(error) => {
+                    debug_log::log(&format!("bridge start failed: {error}"));
                     eprintln!("kage: could not start the local bridge: {error}");
                 }
             }
