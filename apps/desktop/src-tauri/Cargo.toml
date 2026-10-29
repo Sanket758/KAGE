@@ -33,6 +33,7 @@ cairo-rs = "0.18"
 [target.'cfg(windows)'.dependencies]
 getrandom = "0.2"
 winreg = "0.52"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading"] }
 
 [profile.dev]
 incremental = true

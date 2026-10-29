@@ -1,8 +1,10 @@
 mod autostart;
 mod bridge;
+mod instance;
 mod settings;
 
-use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex};
+use std::sync::{atomic::{AtomicBool, AtomicUsize, Ordering}, Arc, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager, PhysicalPosition};
 
 struct AppState {
@@ -25,11 +27,6 @@ fn get_settings() -> serde_json::Value {
 #[tauri::command]
 fn save_settings(settings: serde_json::Value) -> Result<(), String> {
     settings::write_settings(&settings)
-}
-
-#[tauri::command]
-fn set_autostart(enabled: bool) -> Result<(), String> {
-    autostart::set_autostart(enabled)
 }
 
 #[tauri::command]
@@ -203,13 +200,66 @@ fn restore_position(app: &tauri::AppHandle) {
     }
 }
 
+/// A companion launched by the OpenCode plugin (`--managed`) must not outlive
+/// its clients. It waits 10 s after the last client disconnects, or 60 s after
+/// launch when no client ever connects, then exits. A manual launch has no
+/// flag and keeps running until the user quits it.
+fn watch_managed_lifecycle(app: tauri::AppHandle, clients: Arc<AtomicUsize>) {
+    let _ = std::thread::Builder::new()
+        .name("kage-lifecycle".to_string())
+        .spawn(move || {
+            let started = Instant::now();
+            let mut ever_connected = false;
+            let mut idle_since = started;
+            loop {
+                std::thread::sleep(Duration::from_secs(1));
+                if clients.load(Ordering::SeqCst) > 0 {
+                    ever_connected = true;
+                    idle_since = Instant::now();
+                } else {
+                    let grace = if ever_connected {
+                        Duration::from_secs(10)
+                    } else {
+                        Duration::from_secs(60)
+                    };
+                    if idle_since.elapsed() >= grace {
+                        app.exit(0);
+                        return;
+                    }
+                }
+            }
+        });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let paths = bridge::resolve_bridge_paths();
-    // Launching KAGE again after hiding it reopens the existing companion.
-    if bridge::request_show(&paths) {
-        return;
-    }
+    autostart::remove_legacy_autostart();
+
+    // One companion per user. The guard lives until the process exits, so a
+    // second launch can never create a second window even when several
+    // OpenCode sessions start at once.
+    let _instance = match instance::acquire(&paths.runtime_dir) {
+        Ok(Some(guard)) => Some(guard),
+        Ok(None) => {
+            // The running instance may still be bringing its bridge up.
+            for _ in 0..10 {
+                if bridge::request_show(&paths) {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(300));
+            }
+            return;
+        }
+        Err(error) => {
+            eprintln!("kage: could not acquire the single-instance lock: {error}");
+            if bridge::request_show(&paths) {
+                return;
+            }
+            None
+        }
+    };
+    let managed = std::env::args().any(|argument| argument == "--managed");
 
     let builder = tauri::Builder::default()
         .manage(AppState {
@@ -234,11 +284,10 @@ pub fn run() {
             get_bridge_status,
             get_settings,
             save_settings,
-            set_autostart,
             set_move_mode,
             quit_app
         ])
-        .setup(|app| {
+        .setup(move |app| {
             let handle = app.handle().clone();
             restore_position(&handle);
 
@@ -264,11 +313,15 @@ pub fn run() {
 
             match bridge::start(paths, events, status_sink, show_sink, status_handle) {
                 Ok(bridge) => {
+                    let clients = bridge.clients();
                     *app
                         .state::<AppState>()
                         .bridge
                         .lock()
                         .expect("bridge mutex poisoned") = Some(bridge);
+                    if managed {
+                        watch_managed_lifecycle(handle.clone(), clients);
+                    }
                 }
                 Err(error) => {
                     eprintln!("kage: could not start the local bridge: {error}");

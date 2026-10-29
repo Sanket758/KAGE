@@ -29,15 +29,17 @@ bash install.sh
 ```
 
 The installer downloads the latest release, puts the AppImage in
-`~/.local/bin`, installs the plugin, and registers autostart. **Then restart
-OpenCode** (or run `opencode service restart`) so the plugin loads — the
-mascot appears the moment a session starts.
+`~/.local/bin`, and installs the plugin. KAGE does not register login
+autostart: the plugin starts the companion when OpenCode runs, and it exits when
+OpenCode's server stops. **Then restart OpenCode** (or run
+`opencode service restart`) so the plugin loads — the mascot appears the moment
+a session starts.
 
 Useful flags:
 
 ```bash
 bash install.sh --version v0.2.0   # pin a release
-bash install.sh --uninstall        # remove all three pieces
+bash install.sh --uninstall        # remove the app and plugin
 ```
 
 ## Install from the .deb (Debian/Ubuntu/Pop!_OS)
@@ -49,9 +51,10 @@ Download `KAGE_*_amd64.deb` from
 sudo apt install ./KAGE_*_amd64.deb
 ```
 
-The deb installs the `kage` binary and autostart integration, but **not** the
-OpenCode plugin — still grab `kage.js` from the release and put it in
-`~/.config/opencode/plugins/`.
+The deb installs the `kage` binary, but **not** the OpenCode plugin — still grab
+`kage.js` from the release and put it in
+`~/.config/opencode/plugins/`. The plugin is what starts the companion, so the
+binary alone will not appear on screen.
 
 ## Plugin-only install (already have the companion?)
 
@@ -81,11 +84,13 @@ opencode plugin add github:Sanket758/KAGE
 - **No mascot appears.** Is the companion running? `pgrep -x kage`. Are the
   socket and token there? `ls "$XDG_RUNTIME_DIR/kage/"`. After installing the
   plugin you must restart OpenCode once.
+- **Check the lifecycle.** Start `opencode`; exactly one mascot appears and
+  `pgrep -a kage` shows one process. After OpenCode stops, the mascot exits
+  within about 10 seconds. If a second copy is launched, it asks the running
+  instance to show its window and exits.
 - **A rounded card / border around the mascot.** COSMIC (Pop!_OS): Settings →
   Appearance → Floating windows → turn **off** "Match system corners and
   apply shadows".
-- **Companion does not start with the session.** Check
-  `~/.config/autostart/kage.desktop` exists and points at a real file.
 - **Plugin is loaded but silent.** `opencode plugin add` and the file-drop
   install are equivalent; check the plugin file is non-empty and restart
   `opencode serve`.

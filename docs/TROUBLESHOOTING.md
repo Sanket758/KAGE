@@ -74,16 +74,27 @@ ls -l "$XDG_CONFIG_HOME/kage/settings.json"
 If the file is corrupted or not an object, KAGE resets to validated defaults and
 shows a notice in the details panel. Delete the file to start fresh.
 
-## Launch at login does nothing
+## KAGE starts at login / does not exit
 
-KAGE writes `$XDG_CONFIG_HOME/autostart/kage.desktop` pointing at the current
-executable. If you enabled it while running a development build, it will launch
-that debug binary. Re-enable it from the packaged app to fix the path.
+KAGE no longer uses login autostart. The OpenCode plugin starts the companion
+when OpenCode runs, and there is nothing to enable in settings. If the mascot
+appears before you start OpenCode, an older install left an entry behind —
+delete it:
+
+```bash
+rm -f ~/.config/autostart/kage.desktop
+```
+
+A managed instance exits about 10 seconds after the last OpenCode client
+disconnects, or about 60 seconds after launch if no client ever connects. If it
+outlives OpenCode, check for more than one process with `pgrep -a kage`; a second
+launch only asks the running instance to show its window and exits.
 
 ## Removing KAGE
 
-1. Turn off "Launch at login" in settings (or delete `~/.config/autostart/kage.desktop`).
-2. Remove the plugin: `node scripts/install-plugin.mjs --uninstall`
-3. Remove the app, `~/.config/kage/`, and `$XDG_RUNTIME_DIR/kage/`.
+1. Remove the plugin: `node scripts/install-plugin.mjs --uninstall`
+2. Remove the app, `~/.config/kage/`, and `$XDG_RUNTIME_DIR/kage/`.
+3. If an older install left a login autostart entry, delete it:
+   `rm -f ~/.config/autostart/kage.desktop`.
 
 KAGE does not install services or modify shell configuration.

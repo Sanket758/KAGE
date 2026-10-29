@@ -7,7 +7,7 @@
 | Core | `npm test` | event validation, OpenCode normalization, every state transition, priorities, dedupe, out-of-order, multi-session, stale cleanup, sleep/wake, settings validation |
 | Plugin | `npm test` | Unix socket handshake, token auth, reconnection with backoff, bounded queue, missing token, plugin hooks forwarding normalized events, graceful absence |
 | Art | `npm test` | every state has frames, palette bounds, determinism, visual state uniqueness, reduced motion |
-| Rust bridge | `cd apps/desktop/src-tauri && cargo test --lib` | frame parsing, event validation, token comparison, live accept/authenticate/stream/disconnect, unauthorized rejection, settings round-trip and corruption, autostart entry |
+| Rust bridge | `cd apps/desktop/src-tauri && cargo test --lib` | frame parsing, event validation, token comparison, live accept/authenticate/stream/disconnect, unauthorized rejection, settings round-trip and corruption, legacy autostart cleanup, single-instance lock |
 | UI (headless Chrome) | `node tests/e2e/ui-check.mjs` | real built frontend with mocked Tauri IPC: mount, canvas, details panel content, permission/error states, settings persistence, no console errors |
 | Types | `npm run typecheck`, `cd apps/desktop && npm run check` | TypeScript and Svelte |
 
@@ -60,6 +60,10 @@ rendering or the Rust IPC layer; those have separate checks below.
 - **The bundled `.deb` was not installed system-wide during this work.** It was
   built and its control metadata inspected, not `dpkg -i`-ed.
 - **AppImage.** Produced by `tauri build` alongside the deb since the v0.2.0 packaging work; release CI attaches it to GitHub Releases.
+- **Live OpenCode lifecycle.** The single-instance lock and managed-exit behavior
+  are covered by Rust unit tests, and the plugin spawn path by plugin tests, but
+  no live OpenCode session was run to confirm the exit timing. Do not claim it
+  unless actually run.
 
 ## Manual scenarios
 

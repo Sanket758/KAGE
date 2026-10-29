@@ -47,7 +47,8 @@ const FILE_EDIT_THROTTLE_MS = 250;
 function spawnCompanion(): void {
   const command = resolveCompanionCommand();
   if (!command) return;
-  spawn(command, [], { detached: true, stdio: "ignore", env: process.env }).unref();
+  // `--managed` makes the companion exit when the last OpenCode client disconnects.
+  spawn(command, ["--managed"], { detached: true, stdio: "ignore", env: process.env }).unref();
 }
 
 /**

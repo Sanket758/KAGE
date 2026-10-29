@@ -84,7 +84,6 @@ describe("settings validation", () => {
       animationIntensity: "low",
       reducedMotion: true,
       sound: true,
-      launchAtLogin: true,
       showStatusDetails: false,
       position: { x: 120.4, y: -30 },
     });
@@ -96,7 +95,6 @@ describe("settings validation", () => {
       skin: "kagekin",
       reducedMotion: true,
       sound: true,
-      launchAtLogin: true,
       showStatusDetails: false,
       position: { x: 120, y: -30 },
     });

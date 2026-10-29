@@ -146,7 +146,11 @@ second by the UI for relative times and sleep/expiry transitions.
 - Window position is restored only if it still intersects a monitor.
 - Settings are written atomically with mode 0600; corrupted files fall back to
   validated defaults.
-- Autostart is an XDG `~/.config/autostart/kage.desktop` entry.
+- No login autostart: the OpenCode plugin launches KAGE on demand (`--managed`),
+  and a managed instance exits after the last client disconnects. A per-user lock
+  file (`$XDG_RUNTIME_DIR/kage/kage.lock`, `flock` on Unix, named mutex on
+  Windows) enforces a single instance; a second launch asks the running instance
+  to show its window and exits.
 - CSP limits the webview to bundled assets and IPC; no remote code.
 
 ## Privacy boundaries

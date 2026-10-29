@@ -42,7 +42,7 @@ Environment notes:
 - [x] Canvas renderer with crisp scaling, reduced motion and animation intensity.
 - [x] Frameless, transparent, always-on-top window with drag strip.
 - [x] Click-to-inspect panel and settings panel.
-- [x] Persistent settings, window position restore, autostart entry.
+- [x] Persistent settings, window position restore, single-instance lock.
 - [x] App icons generated from the creature art.
 
 ## Stage 5 — Bridge
@@ -93,3 +93,13 @@ items above describe the current implementation, not the desired end state.
 - [ ] Map reliable OpenCode events to the core states in [KAGE.md](../KAGE.md).
 - [ ] Check the basic state mapping and update user-facing docs after the app
       matches this scope.
+
+## Stage 11 — OpenCode-bound lifecycle
+
+KAGE no longer starts at login. The plugin launches it on demand and a managed
+instance exits when OpenCode is gone.
+
+- [x] No login autostart; the settings toggle and installer entry are gone.
+- [x] Single instance per user, enforced by a lock file.
+- [x] A managed instance exits when no client remains.
+- [x] The installer removes a legacy autostart entry left by older versions.

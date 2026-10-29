@@ -433,9 +433,16 @@ pub struct Bridge {
     stop: Arc<AtomicBool>,
     paths: BridgePaths,
     thread: Option<JoinHandle<()>>,
+    clients: Arc<AtomicUsize>,
 }
 
 impl Bridge {
+    /// Number of currently authenticated plugin clients. The managed lifecycle
+    /// watches this to exit when OpenCode is no longer attached.
+    pub fn clients(&self) -> Arc<AtomicUsize> {
+        Arc::clone(&self.clients)
+    }
+
     pub fn stop(&mut self) {
         if self.stop.swap(true, Ordering::SeqCst) {
             return;
@@ -549,6 +556,7 @@ pub fn start(
         stop,
         paths,
         thread: Some(thread),
+        clients,
     })
 }
 
@@ -744,6 +752,7 @@ mod tests {
         reader.read_line(&mut line).unwrap();
         assert!(line.contains("welcome"));
         assert_eq!(status.get(), BridgeStatus::Connected);
+        assert_eq!(bridge.clients().load(Ordering::SeqCst), 1);
 
         let control = r#"{"type":"control","action":"show"}"#;
         writer.write_all(format!("{control}\n").as_bytes()).unwrap();
@@ -768,6 +777,7 @@ mod tests {
             thread::sleep(Duration::from_millis(10));
         }
         assert_eq!(status.get(), BridgeStatus::Disconnected);
+        assert_eq!(bridge.clients().load(Ordering::SeqCst), 0);
 
         bridge.stop();
         // Only Unix removes the endpoint file on stop; the Windows port file

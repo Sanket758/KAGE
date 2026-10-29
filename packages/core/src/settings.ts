@@ -16,7 +16,6 @@ export interface KAGESettings {
   skin: string;
   reducedMotion: boolean;
   sound: boolean;
-  launchAtLogin: boolean;
   showStatusDetails: boolean;
   position: KAGEPosition | null;
 }
@@ -28,7 +27,6 @@ export const DEFAULT_SETTINGS: KAGESettings = {
   skin: "kagekin",
   reducedMotion: false,
   sound: false,
-  launchAtLogin: false,
   showStatusDetails: true,
   position: null,
 };
@@ -99,7 +97,7 @@ export function validateSettings(raw: unknown): {
     issues.push("invalid skin id");
   }
 
-  for (const key of ["reducedMotion", "sound", "launchAtLogin", "showStatusDetails"] as const) {
+  for (const key of ["reducedMotion", "sound", "showStatusDetails"] as const) {
     const value = raw[key];
     if (typeof value === "boolean") {
       settings[key] = value;

@@ -51,8 +51,8 @@ WebKitGTK rendering or the Rust bridge.
   table. No sprite sheets; add poses/palettes in code. Preview with
   `npm run preview:sprites -- <state>` (append `--color` for truecolor).
 - `apps/desktop`: Svelte 5 runes UI; `src-tauri` owns the socket server, auth,
-  settings and autostart. The window is fixed-size; panels widen it from
-  200×200 to 300×~500.
+  settings, single-instance lock and process lifetime. The window is fixed-size;
+  panels widen it from 200×200 to 300×~500.
 - All event-to-behavior changes go through `applyEvent`/`tick` in
   `packages/core/src/reducer.ts`. Do not branch UI or animation directly on
   individual events. Mapping and priority rules live in `docs/ARCHITECTURE.md`.

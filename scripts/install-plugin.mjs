@@ -42,4 +42,4 @@ mkdirSync(directory, { recursive: true });
 copyFileSync(source, target);
 console.log(`installed KAGE plugin at ${target}`);
 console.log("restart OpenCode (or run `opencode service restart`) to load it.");
-console.log("the KAGE desktop app must be running for events to reach the companion.");
+console.log("the plugin launches the companion when OpenCode runs and exits it when OpenCode stops.");

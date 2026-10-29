@@ -12,7 +12,6 @@ has no account system or telemetry.
 | Socket abuse | Maximum 8 clients, 200 events/second per client, bounded plugin queue (128 events). |
 | Desktop app → webview | Tauri IPC with a narrow capability set and a CSP that only allows bundled assets and IPC. |
 | Settings file | Atomic writes with mode 0600; size and shape limits; corrupted input is discarded. |
-| Autostart | Explicit user action writes a single `~/.config/autostart/kage.desktop` entry. |
 
 ## What KAGE does not access
 

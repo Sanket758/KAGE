@@ -21,7 +21,7 @@ finishing — with its own animation language instead of another dashboard.
 - **Click to inspect.** Connection, session status, project, active tool, latest
   event, last error and session counts. Unknown values are shown as unavailable.
 - **Settings** for size, opacity, animation intensity, reduced motion, optional
-  sound, launch at login and status details. Preferences persist locally.
+  sound and status details. Preferences persist locally.
 - **Local only.** No account, no telemetry, no cloud, no network listener. The
   socket is authenticated with a per-run token that only your user can read.
 - **Observes, never controls.** KAGE never reads your keyboard or mouse, injects
@@ -92,8 +92,9 @@ built bundle explicitly in `opencode.json`:
 }
 ```
 
-The plugin is inert when the desktop app is not running: it retries with bounded
-backoff and never blocks, throws into, or slows the agent.
+The plugin starts the companion when OpenCode runs and exits it when OpenCode's
+server stops. It retries with bounded backoff and never blocks, throws into, or
+slows the agent.
 
 Try the animations without OpenCode using simulated events:
 
@@ -112,7 +113,7 @@ These scenarios are simulated fixtures, not a live OpenCode run.
 | Bridge socket | `$XDG_RUNTIME_DIR/kage/kage.sock` |
 | Bridge token | `$XDG_RUNTIME_DIR/kage/token` (mode 0600) |
 | Settings | `$XDG_CONFIG_HOME/kage/settings.json` |
-| Autostart entry | `$XDG_CONFIG_HOME/autostart/kage.desktop` |
+| Instance lock | `$XDG_RUNTIME_DIR/kage/kage.lock` (Unix) |
 
 ## How it fits together
 
