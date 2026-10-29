@@ -7,7 +7,7 @@ It watches your coding session through a small OpenCode plugin and reflects what
 actually happening — working, running a tool, waiting for permission, failing, or
 finishing — with its own animation language instead of another dashboard.
 
-![KAGE companion](docs/kage-window.png)
+![KAGE companion](docs/kage-window.png) ![KAGE celebrating](docs/kage-celebration.png)
 
 > Status: early alpha, Linux-first. Tested against OpenCode `2.1.2`.
 
