@@ -1,6 +1,6 @@
 {
   "name": "kage",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "private": true,
   "type": "module",
   "description": "A little spirit. A lot of signal. Pixel-art desktop companion for OpenCode.",

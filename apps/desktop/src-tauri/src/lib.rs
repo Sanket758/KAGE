@@ -246,7 +246,8 @@ fn watch_managed_lifecycle(app: tauri::AppHandle, clients: Arc<AtomicUsize>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let debug_log_enabled = std::env::args().any(|argument| argument == "--debug-log");
+    let debug_log_enabled = std::env::args().any(|argument| argument == "--debug-log")
+        || matches!(std::env::var("KAGE_DEBUG_LOG").as_deref(), Ok("1") | Ok("true") | Ok("yes"));
     debug_log::init(debug_log_enabled);
     debug_log::log(&format!("startup args: {:?}", std::env::args().collect::<Vec<_>>()));
 

@@ -1,6 +1,6 @@
 [package]
 name = "kage"
-version = "0.3.6"
+version = "0.3.7"
 description = "A little spirit. A lot of signal."
 authors = ["KAGE contributors"]
 edition = "2021"

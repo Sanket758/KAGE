@@ -1,7 +1,8 @@
 //! Optional file logging for diagnosing Windows (and other) issues.
 //!
-//! Enabled with `--debug-log`. Writes timestamped lines to a log file so a
-//! user can share it without a console (the app has no stdout on Windows).
+//! Enabled with `--debug-log` or `KAGE_DEBUG_LOG=1`. Writes timestamped lines to
+//! a log file so a user can share it without a console (the app has no stdout
+//! on Windows).
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -97,6 +98,11 @@ mod tests {
 
     #[test]
     fn opens_and_writes_a_line() {
+        let dir = env::temp_dir().join(format!("kage-debuglog-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let prev = env::var("XDG_RUNTIME_DIR").ok();
+        env::set_var("XDG_RUNTIME_DIR", &dir);
         init(true);
         assert!(path().is_some());
         log("hello from test");
@@ -104,6 +110,12 @@ mod tests {
         let contents = fs::read_to_string(&p).unwrap();
         assert!(!contents.is_empty());
         assert!(contents.contains("hello from test"));
+        if let Some(v) = prev {
+            env::set_var("XDG_RUNTIME_DIR", v);
+        } else {
+            env::remove_var("XDG_RUNTIME_DIR");
+        }
+        let _ = fs::remove_dir_all(&dir);
     }
 }
 
