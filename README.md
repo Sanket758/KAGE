@@ -59,10 +59,10 @@ Download `KAGE_*_amd64.deb` from the
 sudo apt install ./KAGE_*_amd64.deb
 ```
 
-The deb installs the `kage` binary (and its system libraries) but **not** the
-OpenCode plugin — grab `kage.js` from the same release and drop it in
-`~/.config/opencode/plugins/` (or run the one-liner above, which only installs
-the plugin if the binary is already present). Restart OpenCode afterwards.
+The deb installs the `kage` binary (and its system libraries). The companion
+auto-installs the OpenCode plugin into `~/.config/opencode/plugins/` on first
+run, so a separate plugin download is usually not needed — just restart
+OpenCode. (On Windows the folder is `%USERPROFILE%\\.config\\opencode\\plugins\\`.)
 
 **3. Windows (beta)**
 
@@ -117,8 +117,8 @@ Debian package + AppImage:
 ```bash
 cd apps/desktop
 npm run tauri:build -- --bundles deb,appimage
-# → target/release/bundle/deb/KAGE_0.3.7_amd64.deb
-# → target/release/bundle/appimage/KAGE_0.3.7_amd64.AppImage
+# → target/release/bundle/deb/KAGE_0.3.8_amd64.deb
+# → target/release/bundle/appimage/KAGE_0.3.8_amd64.AppImage
 ```
 
 The packages depend on `libwebkit2gtk-4.1-0` and `libgtk-3-0`.

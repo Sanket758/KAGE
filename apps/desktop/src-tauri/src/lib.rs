@@ -244,6 +244,68 @@ fn watch_managed_lifecycle(app: tauri::AppHandle, clients: Arc<AtomicUsize>) {
         });
 }
 
+/// Best-effort: ensure the OpenCode plugin is installed where OpenCode can find
+/// it, so users don't have to copy `kage.js` by hand. Never overwrites an
+/// existing file (the user may have edited it) and never fails the app.
+fn install_plugin_if_missing(app: &tauri::AppHandle) {
+    // OpenCode's global config dir is ~/.config/opencode on every platform
+    // (XDG_CONFIG_HOME / OPENCODE_CONFIG_DIR respected).
+    let config_dir = if let Ok(dir) = std::env::var("OPENCODE_CONFIG_DIR") {
+        std::path::PathBuf::from(dir)
+    } else {
+        let base = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
+            let home = std::env::var("HOME")
+                .or_else(|_| std::env::var("USERPROFILE"))
+                .unwrap_or_default();
+            format!("{}/.config", home)
+        });
+        std::path::PathBuf::from(base).join("opencode")
+    };
+    let plugin_dir = config_dir.join("plugins");
+    let target = plugin_dir.join("kage.js");
+
+    if target.exists() {
+        debug_log::log(&format!("plugin already present at {}", target.display()));
+        return;
+    }
+
+    // Migrate from the (incorrect) %APPDATA%/opencode/plugins location if present.
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        let legacy = std::path::PathBuf::from(appdata)
+            .join("opencode")
+            .join("plugins")
+            .join("kage.js");
+        if legacy.exists() && legacy != target {
+            let _ = std::fs::create_dir_all(&plugin_dir);
+            if std::fs::copy(&legacy, &target).is_ok() {
+                debug_log::log(&format!("migrated plugin from {}", legacy.display()));
+                let _ = std::fs::remove_file(&legacy);
+                return;
+            }
+        }
+    }
+
+    let resource = match app.path().resolve("kage.js", tauri::path::BaseDirectory::Resource) {
+        Ok(p) => p,
+        Err(error) => {
+            debug_log::log(&format!("could not resolve bundled plugin resource: {error}"));
+            return;
+        }
+    };
+    if !resource.exists() {
+        debug_log::log("bundled kage.js resource missing (build:plugin not run?)");
+        return;
+    }
+    if std::fs::create_dir_all(&plugin_dir).is_err() {
+        debug_log::log("could not create plugin directory");
+        return;
+    }
+    match std::fs::copy(&resource, &target) {
+        Ok(_) => debug_log::log(&format!("installed plugin to {}", target.display())),
+        Err(error) => debug_log::log(&format!("could not install plugin: {error}")),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let debug_log_enabled = std::env::args().any(|argument| argument == "--debug-log")
@@ -330,6 +392,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
+            install_plugin_if_missing(&handle);
             restore_position(&handle);
 
             let status_handle = app.state::<AppState>().status.clone();
